@@ -207,7 +207,7 @@ async function main() {
   const weekDays = getWeekDays();
 
   const allFrames = await Promise.all(days7.map(fetchCSV));
-  const allRows   = allFrames.flat().filter(r => r.timestamp);
+  const allRows   = allFrames.flat().filter(r => r && r.timestamp && typeof r.timestamp === "string");
 
   if (!allRows.length) {
     document.getElementById("loading").textContent = "No se encontraron datos. Verifica que el repo es público o que los CSVs existen.";
