@@ -28,9 +28,14 @@ FLAG_THRESHOLD_DAYS = int(os.getenv("FLAG_THRESHOLD_DAYS", "1"))
 # Formato: { "alias": { "ip": str, "aula": str, "colegio": str } }
 
 DEVICES: dict[str, dict] = {
-    # Ejemplos — reemplazar con datos reales tras setup_plugs.py
-    # "plug_p1": {"ip": "192.168.1.101", "aula": "Aula 101", "colegio": "Col. San Francisco"},
+    "lamp": {"ip": "192.168.0.241", "aula": "Aula 101", "colegio": "Colombia School 1"},
+    "tv": {"ip": "192.168.0.232", "aula": "Aula 102", "colegio": "Colombia School 2"},
+    "air": {"ip": "192.168.0.144", "aula": "Aula 103", "colegio": "Colombia School 3"},
+    "coffee": {"ip": "192.168.0.119", "aula": "Aula 104", "colegio": "Colombia School 4"},
+    "eco": {"ip": "192.168.0.227", "aula": "Aula 201", "colegio": "Colombia School 5"},
+    "fridge": {"ip": "192.168.0.237", "aula": "Aula 202", "colegio": "Colombia School 6"},
 }
+
 
 # ---------------------------------------------------------------------------
 # Wattage del Sqair por intensidad
