@@ -1,0 +1,48 @@
+{
+  "pilot": {
+    "name": "Smart Plug Pilot — Bogotá 2026",
+    "timezone": "America/Bogota",
+    "school_start": "07:00",
+    "school_end": "16:00",
+    "flag_threshold_days": 1,
+    "poll_interval_seconds": 300
+  },
+  "schools": [
+    {
+      "id": "school_1",
+      "name": "Colombia School 1",
+      "address": "Dirección por confirmar",
+      "lat": 4.6780,
+      "lng": -74.0490,
+      "nudge_type": "tbd",
+      "plugs": [
+        {"tapo_alias": "air purifier", "aula": "Aula 101", "floor": 1},
+        {"tapo_alias": "umy eco",      "aula": "Aula 102", "floor": 1}
+      ]
+    },
+    {
+      "id": "school_2",
+      "name": "Colombia School 2",
+      "address": "Dirección por confirmar",
+      "lat": 4.6512,
+      "lng": -74.0630,
+      "nudge_type": "tbd",
+      "plugs": [
+        {"tapo_alias": "lamp",         "aula": "Aula 103", "floor": 1},
+        {"tapo_alias": "coffee maker", "aula": "Aula 104", "floor": 1}
+      ]
+    },
+    {
+      "id": "school_3",
+      "name": "Colombia School 3",
+      "address": "Dirección por confirmar",
+      "lat": 4.6920,
+      "lng": -74.0820,
+      "nudge_type": "tbd",
+      "plugs": [
+        {"tapo_alias": "fridge", "aula": "Aula 201", "floor": 2},
+        {"tapo_alias": "tv",     "aula": "Aula 202", "floor": 2}
+      ]
+    }
+  ]
+}

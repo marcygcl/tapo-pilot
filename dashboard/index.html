@@ -9,58 +9,111 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
-    :root {
+    :root{
       --bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);
       --text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;
       --green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;
       --amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;
       --red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;
-      --blue:#185fa5;--blue-bg:#e6f1fb;--r:10px;
+      --blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;
+      --purple:#534ab7;--purple-bg:#eeedfe;
+      --r:10px;
     }
-    @media(prefers-color-scheme:dark){
-      :root{
-        --bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);
-        --text:#eeebe3;--muted:#888780;--hint:#5f5e5a;
-        --green:#97c459;--green-bg:#27500a;--green-mid:#639922;
-        --amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;
-        --red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;
-        --blue:#85b7eb;--blue-bg:#0c447c;
-      }
-    }
+    @media(prefers-color-scheme:dark){:root{
+      --bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);
+      --text:#eeebe3;--muted:#888780;--hint:#5f5e5a;
+      --green:#97c459;--green-bg:#27500a;--green-mid:#639922;
+      --amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;
+      --red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;
+      --blue:#85b7eb;--blue-bg:#0c447c;--blue-mid:#378add;
+      --purple:#afa9ec;--purple-bg:#3c3489;
+    }}
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
-    .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:0.5px solid var(--border);background:var(--surface);}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+    /* ── Topbar ── */
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
     .topbar h1{font-size:15px;font-weight:500;}
     .topbar p{font-size:11px;color:var(--muted);margin-top:1px;}
     .topbar-right{display:flex;align-items:center;gap:8px;}
-    .pill{font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;}
+    .pill{font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;white-space:nowrap;}
     .pill-green{background:var(--green-bg);color:var(--green);}
-    .pill-amber{background:var(--amber-bg);color:var(--amber);}
     .pill-red{background:var(--red-bg);color:var(--red);}
     .pill-blue{background:var(--blue-bg);color:var(--blue);}
     .sync{font-size:11px;color:var(--hint);}
-    .layout{display:grid;grid-template-columns:1fr 360px;height:calc(100vh - 53px);}
-    .map-panel{position:relative;}
+
+    /* ── Tabs ── */
+    .tabs{display:flex;gap:0;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
+    .tab{padding:10px 24px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color 0.15s,border-color 0.15s;}
+    .tab:hover{color:var(--text);}
+    .tab.active{color:var(--text);border-bottom-color:var(--text);}
+
+    /* ── Tab panels ── */
+    .panel{display:none;flex:1;overflow:hidden;}
+    .panel.active{display:flex;}
+
+    /* ══ TAB 1 — Resumen ══ */
+    #tab-resumen{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:20px;}
+
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+    .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+    .kpi-label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+    .kpi-value{font-size:26px;font-weight:500;}
+    .kpi-sub{font-size:11px;color:var(--hint);margin-top:3px;}
+
+    .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;}
+
+    .school-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .school-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;}
+    .school-card.flag-red{border-color:var(--red-mid);}
+    .school-card.flag-amber{border-color:var(--amber-mid);}
+    .school-name{font-size:13px;font-weight:500;margin-bottom:2px;}
+    .school-meta{font-size:11px;color:var(--muted);margin-bottom:10px;}
+    .school-sem{width:10px;height:10px;border-radius:50%;position:absolute;top:14px;right:14px;}
+    .school-stats{display:flex;gap:14px;}
+    .school-stat{font-size:11px;color:var(--muted);}
+    .school-stat b{color:var(--text);font-weight:500;}
+    .nudge-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:8px;background:var(--purple-bg);color:var(--purple);}
+
+    .alert-cards{display:flex;flex-direction:column;gap:8px;}
+    .alert-card{background:var(--surface);border:0.5px solid var(--border);border-left:3px solid;border-radius:var(--r);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;}
+    .alert-card.red{border-left-color:var(--red-mid);}
+    .alert-card.amber{border-left-color:var(--amber-mid);}
+    .alert-info{}
+    .alert-name{font-size:13px;font-weight:500;}
+    .alert-reason{font-size:11px;color:var(--muted);margin-top:2px;}
+    .alert-action{font-size:11px;padding:5px 12px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);color:var(--text);cursor:default;white-space:nowrap;}
+    .alert-action.red{background:var(--red-bg);color:var(--red);border-color:var(--red-mid);}
+    .alert-action.amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-mid);}
+
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    .chart-box{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;}
+
+    .uptime-bars{display:flex;flex-direction:column;gap:8px;}
+    .uptime-row{display:flex;align-items:center;gap:10px;}
+    .uptime-label{font-size:11px;color:var(--muted);width:120px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .uptime-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;}
+    .uptime-fill{height:100%;border-radius:4px;transition:width 0.4s;}
+    .uptime-pct{font-size:11px;font-weight:500;width:36px;text-align:right;flex-shrink:0;}
+
+    /* ══ TAB 2 — Mapa ══ */
+    #tab-mapa{flex-direction:row;}
+    .map-wrap{flex:1;position:relative;}
     #map{width:100%;height:100%;}
     .map-legend{position:absolute;bottom:20px;left:12px;z-index:1000;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:11px;}
-    .map-legend b{display:block;margin-bottom:5px;font-size:11px;}
+    .map-legend b{display:block;margin-bottom:5px;}
     .leg-row{display:flex;align-items:center;gap:6px;margin-top:4px;}
-    .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-    .side{border-left:0.5px solid var(--border);background:var(--surface);overflow-y:auto;display:flex;flex-direction:column;}
-    .metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:14px;border-bottom:0.5px solid var(--border);}
-    .metric{background:var(--bg);border-radius:var(--r);padding:11px 13px;}
-    .metric-label{font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;}
-    .metric-value{font-size:22px;font-weight:500;}
-    .metric-sub{font-size:10px;color:var(--hint);margin-top:2px;}
-    .sec{padding:12px 14px;border-bottom:0.5px solid var(--border);}
-    .sec-title{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:9px;}
+    .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+    .map-side{width:320px;border-left:0.5px solid var(--border);background:var(--surface);overflow-y:auto;display:flex;flex-direction:column;}
+    .map-sec{padding:12px 14px;border-bottom:0.5px solid var(--border);}
+    .map-sec-title{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
     .plug-list{display:flex;flex-direction:column;gap:5px;}
-    .plug-row{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color 0.15s;}
+    .plug-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color 0.15s;}
     .plug-row:hover{border-color:var(--muted);}
     .plug-row.sel{border-color:var(--blue);background:var(--blue-bg);}
     .plug-row.amber{border-color:var(--amber-mid);}
     .plug-row.red{border-color:var(--red-mid);}
-    .sem{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+    .sem{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
     .plug-info{flex:1;min-width:0;}
     .plug-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .plug-meta{font-size:10px;color:var(--muted);}
@@ -69,23 +122,18 @@
     .tl-title{font-size:11px;font-weight:500;margin-bottom:8px;}
     .tl-grid{display:flex;flex-direction:column;gap:4px;}
     .tl-row{display:flex;align-items:center;gap:5px;}
-    .tl-lbl{font-size:10px;color:var(--muted);width:48px;flex-shrink:0;text-align:right;}
+    .tl-lbl{font-size:10px;color:var(--muted);width:44px;flex-shrink:0;text-align:right;}
     .tl-bars{display:flex;gap:1px;flex:1;}
-    .tl-cell{flex:1;height:13px;border-radius:2px;}
-    .leg{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:8px;}
+    .tl-cell{flex:1;height:12px;border-radius:2px;}
+    .leg{display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:8px;}
     .leg-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle;}
-    .alert-list{display:flex;flex-direction:column;gap:5px;}
-    .alert-item{padding:8px 11px;border-radius:var(--r);border-left:3px solid;font-size:12px;}
-    .alert-red{border-color:var(--red-mid);background:var(--red-bg);}
-    .alert-amber{border-color:var(--amber-mid);background:var(--amber-bg);}
-    .alert-name{font-weight:500;margin-bottom:1px;}
-    .alert-reason{font-size:10px;color:var(--muted);}
-    .chart-sec{padding:12px 14px;}
-    .chart-sec .sec-title{margin-bottom:8px;}
-    @media(max-width:768px){
-      .layout{grid-template-columns:1fr;grid-template-rows:45vh 1fr;height:auto;}
-      .side{border-left:none;border-top:0.5px solid var(--border);}
-      .metrics{grid-template-columns:repeat(4,1fr);}
+
+    @media(max-width:900px){
+      .kpi-grid{grid-template-columns:repeat(2,1fr);}
+      .school-cards{grid-template-columns:repeat(2,1fr);}
+      .two-col{grid-template-columns:1fr;}
+      #tab-mapa{flex-direction:column;}
+      .map-side{width:100%;height:280px;border-left:none;border-top:0.5px solid var(--border);}
     }
   </style>
 </head>
@@ -93,7 +141,7 @@
 
 <div class="topbar">
   <div>
-    <h1>Smart Plug Pilot — Bogotá 2026</h1>
+    <h1 id="pilot-title">Smart Plug Pilot — Bogotá 2026</h1>
     <p id="subtitle">Cargando datos...</p>
   </div>
   <div class="topbar-right">
@@ -103,154 +151,140 @@
   </div>
 </div>
 
-<div class="layout">
-  <div class="map-panel">
-    <div id="map"></div>
-    <div class="map-legend">
-      <b>Semáforo semanal</b>
-      <div class="leg-row"><span class="dot" style="background:#639922"></span>Normal — sin días apagados</div>
-      <div class="leg-row"><span class="dot" style="background:#ef9f27"></span>Alerta — 1 día apagado</div>
-      <div class="leg-row"><span class="dot" style="background:#e24b4a"></span>Bandera — visita requerida</div>
-      <div class="leg-row"><span class="dot" style="background:#888780"></span>Sin datos esta semana</div>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
+  <div class="tab" onclick="switchTab('mapa',this)">Mapa</div>
+</div>
+
+<!-- ══ TAB 1: RESUMEN ══ -->
+<div class="panel active" id="tab-resumen">
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div>
+    <div class="section-title">Estado por colegio</div>
+    <div class="school-cards" id="schoolCards"></div>
+  </div>
+
+  <div id="alertSection">
+    <div class="section-title">Alertas activas</div>
+    <div class="alert-cards" id="alertCards"></div>
+  </div>
+
+  <div class="two-col">
+    <div class="chart-box">
+      <div class="section-title" style="margin-bottom:12px;">Consumo diario — últimos 7 días (Wh)</div>
+      <div style="position:relative;height:150px;">
+        <canvas id="trendChart" role="img" aria-label="Consumo diario Wh últimos 7 días">Gráfico de consumo.</canvas>
+      </div>
+    </div>
+    <div class="chart-box">
+      <div class="section-title" style="margin-bottom:12px;">Uptime semanal por aula</div>
+      <div class="uptime-bars" id="uptimeBars"></div>
     </div>
   </div>
 
-  <div class="side">
-    <div class="metrics">
-      <div class="metric">
-        <div class="metric-label">Activos ahora</div>
-        <div class="metric-value" id="m-active">—</div>
-        <div class="metric-sub">de 6 plugs</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Uptime semana</div>
-        <div class="metric-value" id="m-uptime">—</div>
-        <div class="metric-sub">horario escolar</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Banderas</div>
-        <div class="metric-value" id="m-flags">—</div>
-        <div class="metric-sub">visitas sugeridas</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Consumo hoy</div>
-        <div class="metric-value" id="m-wh">—</div>
-        <div class="metric-sub">Wh total</div>
-      </div>
-    </div>
+</div>
 
-    <div class="sec">
-      <div class="sec-title">Estado por aula — click para detalle</div>
+<!-- ══ TAB 2: MAPA ══ -->
+<div class="panel" id="tab-mapa">
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-legend">
+      <b>Semáforo semanal</b>
+      <div class="leg-row"><span class="dot" style="background:#639922"></span>Normal</div>
+      <div class="leg-row"><span class="dot" style="background:#ef9f27"></span>Alerta — 1 día apagado</div>
+      <div class="leg-row"><span class="dot" style="background:#e24b4a"></span>Bandera — visita requerida</div>
+      <div class="leg-row"><span class="dot" style="background:#888780"></span>Sin datos</div>
+    </div>
+  </div>
+  <div class="map-side">
+    <div class="map-sec">
+      <div class="map-sec-title">Aulas — click para detalle</div>
       <div class="plug-list" id="plugList"></div>
     </div>
-
     <div class="tl-wrap" id="tlSection" style="display:none">
       <div class="tl-title" id="tlTitle">Intensidad semanal</div>
       <div class="tl-grid" id="tlGrid"></div>
       <div class="leg">
-        <span><span class="leg-dot" style="background:#3b6d11"></span>Alta 29–42W</span>
-        <span><span class="leg-dot" style="background:#639922"></span>Media 11–28W</span>
-        <span><span class="leg-dot" style="background:#ef9f27"></span>Baja 3–10W</span>
+        <span><span class="leg-dot" style="background:#3b6d11"></span>Alta</span>
+        <span><span class="leg-dot" style="background:#639922"></span>Media</span>
+        <span><span class="leg-dot" style="background:#ef9f27"></span>Baja</span>
         <span><span class="leg-dot" style="background:#e24b4a"></span>Apagado</span>
         <span><span class="leg-dot" style="background:#d3d1c7"></span>Sin datos</span>
-      </div>
-    </div>
-
-    <div class="sec" id="alertSection" style="display:none">
-      <div class="sec-title">Alertas activas</div>
-      <div class="alert-list" id="alertList"></div>
-    </div>
-
-    <div class="chart-sec">
-      <div class="sec-title">Consumo diario — últimos 7 días (Wh)</div>
-      <div style="position:relative;height:120px;">
-        <canvas id="trendChart" role="img" aria-label="Consumo diario Wh últimos 7 días">Gráfico de consumo diario.</canvas>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const REPO = "https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
-const SH = 7, SE = 16;
+const REPO="https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
+let CFG=null,DEV={},SCHOOLS={};
+let _map,_mapInit=false,_markers={},_allRows=[],_weekDays=[],_selAlias=null;
+let _dOff={},_uptime={},_latest={};
 
-const DEV = {
-  lamp:   {aula:"Aula 101", colegio:"Colombia School 1", lat:4.6780, lng:-74.0490},
-  tv:     {aula:"Aula 102", colegio:"Colombia School 1", lat:4.6780, lng:-74.0490},
-  air:    {aula:"Aula 103", colegio:"Colombia School 2", lat:4.6512, lng:-74.0630},
-  coffee: {aula:"Aula 104", colegio:"Colombia School 2", lat:4.6512, lng:-74.0630},
-  eco:    {aula:"Aula 201", colegio:"Colombia School 3", lat:4.6920, lng:-74.0820},
-  fridge: {aula:"Aula 202", colegio:"Colombia School 3", lat:4.6920, lng:-74.0820},
-};
+function switchTab(id,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("tab-"+id).classList.add("active");
+  if(id==="mapa"&&!_mapInit){ initMap(); _mapInit=true; }
+}
 
-const SCHOOLS = {};
-Object.entries(DEV).forEach(([a,d])=>{
-  if(!SCHOOLS[d.colegio]) SCHOOLS[d.colegio]={lat:d.lat,lng:d.lng,plugs:[]};
-  SCHOOLS[d.colegio].plugs.push(a);
-});
+const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toISOString().slice(0,10);});
+const getWeek=()=>{const t=new Date(),m=new Date(t);m.setDate(t.getDate()-t.getDay()+1);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});};
+const inSchool=ts=>{const d=new Date(ts),h=d.getHours(),w=d.getDay();return w>=1&&w<=5&&h>=7&&h<16;};
+const wColor=w=>{if(w===undefined||w===null)return"#d3d1c7";if(w<=2)return"#e24b4a";if(w<=10)return"#ef9f27";if(w<=28)return"#639922";return"#3b6d11";};
+const semColor=v=>v===null?"#888780":v===0?"#639922":v===1?"#ef9f27":"#e24b4a";
 
-const getDays = n => Array.from({length:n},(_,i)=>{
-  const d=new Date(); d.setDate(d.getDate()-(n-1-i)); return d.toISOString().slice(0,10);
-});
-const getWeek = ()=>{
-  const t=new Date(), m=new Date(t);
-  m.setDate(t.getDate()-t.getDay()+1);
-  return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});
-};
-const inSchool = ts=>{const d=new Date(ts),h=d.getHours(),w=d.getDay();return w>=1&&w<=5&&h>=SH&&h<SE;};
-const wColor = w=>{
-  if(w===undefined||w===null) return "#d3d1c7";
-  if(w<=2)  return "#e24b4a";
-  if(w<=10) return "#ef9f27";
-  if(w<=28) return "#639922";
-  return "#3b6d11";
-};
-const semColor = v=> v===null?"#888780":v===0?"#639922":v===1?"#ef9f27":"#e24b4a";
-
-const fetchCSV = date => new Promise(res=>{
-  Papa.parse(`${REPO}/energy_logs/${date}.csv`,{
-    download:true,header:true,dynamicTyping:true,
+const fetchCSV=date=>new Promise(res=>{
+  Papa.parse(`${REPO}/energy_logs/${date}.csv`,{download:true,header:true,dynamicTyping:true,
     complete:r=>res((r.data||[]).filter(r=>r&&r.timestamp&&typeof r.timestamp==="string")),
-    error:()=>res([])
-  });
+    error:()=>res([])});
 });
 
-let _map, _markers={}, _allRows=[], _weekDays=[], _selAlias=null;
+const NUDGE_LABELS={"sms":"SMS","whatsapp":"WhatsApp","visita":"Visita presencial","llamada":"Llamada","tbd":"Por definir"};
 
 async function main(){
-  const days7=getDays(7), today=days7[6], week=getWeek();
+  const resp=await fetch(`${REPO}/config.json`);
+  CFG=await resp.json();
+  document.getElementById("pilot-title").textContent=CFG.pilot.name;
+
+  for(const school of CFG.schools){
+    SCHOOLS[school.id]={name:school.name,lat:school.lat,lng:school.lng,plugs:[],nudge:school.nudge_type||"tbd"};
+    for(const plug of school.plugs){
+      DEV[plug.tapo_alias]={aula:plug.aula,colegio:school.name,schoolId:school.id};
+      SCHOOLS[school.id].plugs.push(plug.tapo_alias);
+    }
+  }
+
+  const days7=getDays(7),today=days7[6],week=getWeek();
   _weekDays=week;
   const frames=await Promise.all(days7.map(fetchCSV));
-  const all=frames.flat();
-  _allRows=all;
+  _allRows=frames.flat();
   const todayRows=frames[6];
 
-  const latest={};
-  todayRows.forEach(r=>{latest[r.alias]=r;});
+  todayRows.forEach(r=>{_latest[r.alias]=r;});
 
-  const schoolRows=all.filter(r=>inSchool(r.timestamp));
-  const weekSchool=all.filter(r=>week.includes(r.timestamp.slice(0,10))&&inSchool(r.timestamp));
+  const schoolRows=_allRows.filter(r=>inSchool(r.timestamp));
+  const weekSchool=_allRows.filter(r=>week.includes(r.timestamp.slice(0,10))&&inSchool(r.timestamp));
 
-  const uptime={}, dOff={}, flag={};
   Object.keys(DEV).forEach(a=>{
     const rows=schoolRows.filter(r=>r.alias===a);
     const on=rows.filter(r=>r.is_on).length;
-    uptime[a]=rows.length?Math.round(on/rows.length*100):null;
+    _uptime[a]=rows.length?Math.round(on/rows.length*100):null;
     const wdays=new Set(weekSchool.filter(r=>r.alias===a).map(r=>r.timestamp.slice(0,10)));
     const won=new Set(weekSchool.filter(r=>r.alias===a&&r.is_on).map(r=>r.timestamp.slice(0,10)));
-    const off=[...wdays].filter(d=>!won.has(d)).length;
-    dOff[a]=wdays.size?off:null;
-    flag[a]=off>1;
+    _dOff[a]=wdays.size?[...wdays].filter(d=>!won.has(d)).length:null;
   });
 
-  const schoolOff=s=>SCHOOLS[s].plugs.map(a=>dOff[a]).filter(v=>v!==null).reduce((mx,v)=>Math.max(mx,v),-1);
-
-  const active=Object.values(latest).filter(r=>r.is_on).length;
+  const schoolMaxOff=sid=>SCHOOLS[sid].plugs.map(a=>_dOff[a]).filter(v=>v!==null).reduce((mx,v)=>Math.max(mx,v),-1);
+  const active=Object.values(_latest).filter(r=>r.is_on).length;
   const total=Object.keys(DEV).length;
-  const ups=Object.values(uptime).filter(v=>v!==null);
+  const ups=Object.values(_uptime).filter(v=>v!==null);
   const avgUp=ups.length?Math.round(ups.reduce((a,b)=>a+b,0)/ups.length):0;
-  const flags=Object.values(flag).filter(Boolean).length;
-  const wh=Object.values(latest).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(0);
+  const flags=Object.values(_dOff).filter(v=>v!==null&&v>CFG.pilot.flag_threshold_days).length;
+  const wh=Object.values(_latest).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(0);
   const lastTs=todayRows.length?todayRows[todayRows.length-1].timestamp.slice(11,16):"—";
 
   document.getElementById("subtitle").textContent=`${total} plugs · ${today} · sync cada 5 min`;
@@ -258,78 +292,130 @@ async function main(){
   const fb=document.getElementById("flag-badge");
   fb.textContent=flags?`${flags} bandera${flags>1?"s":""}`:"Sin banderas";
   fb.className=`pill ${flags?"pill-red":"pill-green"}`;
-  document.getElementById("last-sync").textContent=`Última lectura: ${lastTs}`;
-  document.getElementById("m-active").textContent=`${active}/${total}`;
-  document.getElementById("m-uptime").textContent=avgUp?`${avgUp}%`:"—";
-  document.getElementById("m-flags").textContent=flags;
-  document.getElementById("m-wh").textContent=wh;
+  document.getElementById("last-sync").textContent=`Última: ${lastTs}`;
 
-  initMap(schoolOff);
-  renderPlugs(latest,dOff,uptime);
-  renderAlerts(dOff);
-  renderChart(frames,days7);
-}
+  // KPIs
+  document.getElementById("kpiGrid").innerHTML=`
+    <div class="kpi"><div class="kpi-label">Filtros activos ahora</div><div class="kpi-value">${active}<span style="font-size:16px;color:var(--muted)">/${total}</span></div><div class="kpi-sub">${Math.round(active/total*100)}% de cobertura</div></div>
+    <div class="kpi"><div class="kpi-label">Uptime semanal</div><div class="kpi-value">${avgUp?avgUp+"%":"—"}</div><div class="kpi-sub">en horario escolar</div></div>
+    <div class="kpi"><div class="kpi-label">Banderas activas</div><div class="kpi-value" style="color:${flags?"var(--red-mid)":"var(--green-mid)"}">${flags}</div><div class="kpi-sub">visitas sugeridas</div></div>
+    <div class="kpi"><div class="kpi-label">Consumo hoy</div><div class="kpi-value">${wh}<span style="font-size:16px;color:var(--muted)"> Wh</span></div><div class="kpi-sub">todos los plugs</div></div>
+  `;
 
-function initMap(schoolOff){
-  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
-  _map=L.map("map",{zoomControl:true}).setView([4.672,-74.058],12);
-  L.tileLayer(
-    dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        :"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    {attribution:"© OpenStreetMap © CARTO",maxZoom:19}
-  ).addTo(_map);
-
-  Object.entries(SCHOOLS).forEach(([school,data])=>{
-    const maxOff=schoolOff(school);
+  // School cards
+  const cards=document.getElementById("schoolCards");
+  cards.innerHTML="";
+  for(const [sid,data] of Object.entries(SCHOOLS)){
+    const maxOff=schoolMaxOff(sid);
     const color=semColor(maxOff===-1?null:maxOff);
-    const plugRows=data.plugs.map(a=>`<div style="display:flex;justify-content:space-between;gap:14px;padding:2px 0;font-size:11px;"><span>${DEV[a].aula}</span><span style="color:${color};font-weight:500;">${maxOff===0?"OK":maxOff===1?"Alerta":"Bandera"}</span></div>`).join("");
+    const flagCls=maxOff>=2?"flag-red":maxOff===1?"flag-amber":"";
+    const schoolUptime=data.plugs.map(a=>_uptime[a]).filter(v=>v!==null);
+    const avgSchoolUp=schoolUptime.length?Math.round(schoolUptime.reduce((a,b)=>a+b,0)/schoolUptime.length):null;
+    const nudgeLabel=NUDGE_LABELS[data.nudge]||data.nudge;
+    cards.innerHTML+=`
+      <div class="school-card ${flagCls}">
+        <div class="school-sem" style="background:${color}"></div>
+        <div class="school-name">${data.name}</div>
+        <div class="school-meta">${data.plugs.length} aulas monitoreadas</div>
+        <div class="school-stats">
+          <div class="school-stat">Uptime <b>${avgSchoolUp!==null?avgSchoolUp+"%":"—"}</b></div>
+          <div class="school-stat">Días off <b>${maxOff>=0?maxOff:"—"}</b></div>
+        </div>
+        <span class="nudge-badge">Nudge: ${nudgeLabel}</span>
+      </div>`;
+  }
 
-    const icon=L.divIcon({
-      html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:white;">${data.plugs.length}</div>`,
-      className:"",iconSize:[30,30],iconAnchor:[15,15]
+  // Alerts
+  const alertsData=Object.entries(_dOff).filter(([,v])=>v!==null&&v>0).sort(([,a],[,b])=>b-a);
+  const alertSec=document.getElementById("alertSection");
+  if(!alertsData.length){ alertSec.style.display="none"; }
+  else {
+    const ac=document.getElementById("alertCards");
+    ac.innerHTML="";
+    alertsData.forEach(([alias,off])=>{
+      const cfg=DEV[alias],lvl=off>=2?"red":"amber";
+      const actionLabel=off>=2?"Visita requerida":"Monitorear";
+      ac.innerHTML+=`
+        <div class="alert-card ${lvl}">
+          <div class="alert-info">
+            <div class="alert-name">${cfg.aula} · ${cfg.colegio}</div>
+            <div class="alert-reason">${off} día${off>1?"s":""} escolar${off>1?"es":""} apagado · Nudge: ${NUDGE_LABELS[SCHOOLS[cfg.schoolId].nudge]||"—"}</div>
+          </div>
+          <div class="alert-action ${lvl}">${actionLabel}</div>
+        </div>`;
     });
+  }
 
-    const m=L.marker([data.lat,data.lng],{icon}).addTo(_map);
-    m.bindPopup(`<div style="min-width:160px;"><strong style="font-size:13px;">${school}</strong><div style="margin-top:6px;">${plugRows}</div></div>`);
-    _markers[school]=m;
+  // Trend chart
+  const dailyWh=frames.map(rows=>{const by={};rows.forEach(r=>{if(r.alias)by[r.alias]=r;});return+Object.values(by).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(1);});
+  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
+  const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
+  new Chart(document.getElementById("trendChart"),{type:"bar",
+    data:{labels:days7.map(d=>d.slice(5)),datasets:[{data:dailyWh,backgroundColor:days7.map((_,i)=>i===6?"#639922":"#97c459"),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}},
+              y:{ticks:{color:tc,font:{size:10},callback:v=>v+"Wh"},grid:{color:gc},border:{display:false}}}}});
+
+  // Uptime bars
+  const ub=document.getElementById("uptimeBars");
+  ub.innerHTML="";
+  Object.entries(DEV).forEach(([alias,cfg])=>{
+    const up=_uptime[alias];
+    const color=up===null?"#d3d1c7":up>=80?"#639922":up>=50?"#ef9f27":"#e24b4a";
+    ub.innerHTML+=`<div class="uptime-row">
+      <div class="uptime-label">${cfg.aula}</div>
+      <div class="uptime-track"><div class="uptime-fill" style="width:${up||0}%;background:${color}"></div></div>
+      <div class="uptime-pct" style="color:${color}">${up!==null?up+"%":"—"}</div>
+    </div>`;
   });
+
+  // Plug list (mapa tab)
+  renderPlugList();
 }
 
-function renderPlugs(latest,dOff,uptime){
+function renderPlugList(){
   const list=document.getElementById("plugList");
   list.innerHTML="";
   Object.entries(DEV).forEach(([alias,cfg])=>{
-    const r=latest[alias];
-    const off=dOff[alias];
-    const w=r?(r.watts||0):null;
-    const on=r?r.is_on:false;
-    const up=uptime[alias];
-    const flagCls=off===null?"":off===0?"":"amber"+(off>=2?" red":"");
+    const r=_latest[alias],off=_dOff[alias],w=r?(r.watts||0):null,on=r?r.is_on:false;
     const color=semColor(off);
-    const wStr=w!==null?`${w.toFixed(1)}W`:"—";
-
     const row=document.createElement("div");
     row.className=`plug-row ${off>=2?"red":off===1?"amber":""}`;
     row.dataset.alias=alias;
-    row.innerHTML=`
-      <span class="sem" style="background:${color}"></span>
-      <div class="plug-info">
-        <div class="plug-name">${cfg.aula}</div>
-        <div class="plug-meta">${cfg.colegio}${up!==null?" · "+up+"% uptime":""}</div>
-      </div>
-      <div class="plug-w" style="color:${on?"var(--green-mid)":"var(--red-mid)"}">${wStr}</div>
-    `;
+    row.innerHTML=`<span class="sem" style="background:${color}"></span>
+      <div class="plug-info"><div class="plug-name">${cfg.aula}</div><div class="plug-meta">${cfg.colegio}</div></div>
+      <div class="plug-w" style="color:${on?"var(--green-mid)":"var(--red-mid)"}">${w!==null?w.toFixed(1)+"W":"—"}</div>`;
     row.addEventListener("click",()=>selectPlug(alias));
     list.appendChild(row);
+  });
+}
+
+function initMap(){
+  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
+  _map=L.map("map",{zoomControl:true}).setView([4.672,-74.058],12);
+  L.tileLayer(dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    {attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(_map);
+
+  const schoolMaxOff=sid=>{const offs=SCHOOLS[sid].plugs.map(a=>_dOff[a]).filter(v=>v!==null);return offs.length?Math.max(...offs):-1;};
+
+  Object.entries(SCHOOLS).forEach(([sid,data])=>{
+    const maxOff=schoolMaxOff(sid);
+    const color=semColor(maxOff===-1?null:maxOff);
+    const rows=data.plugs.map(a=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px;"><span>${DEV[a].aula}</span><span style="color:${semColor(_dOff[a])};font-weight:500;">${_dOff[a]===0||_dOff[a]===null?"OK":_dOff[a]===1?"Alerta":"Bandera"}</span></div>`).join("");
+    const nudge=NUDGE_LABELS[data.nudge]||data.nudge;
+    const icon=L.divIcon({html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:white;">${data.plugs.length}</div>`,className:"",iconSize:[30,30],iconAnchor:[15,15]});
+    const m=L.marker([data.lat,data.lng],{icon}).addTo(_map);
+    m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">Nudge: ${nudge}</div>${rows}</div>`);
+    _markers[sid]=m;
   });
 }
 
 function selectPlug(alias){
   _selAlias=alias;
   document.querySelectorAll(".plug-row").forEach(r=>r.classList.toggle("sel",r.dataset.alias===alias));
-  const cfg=DEV[alias];
-  _map.setView([cfg.lat,cfg.lng],15);
-  if(_markers[cfg.colegio]) _markers[cfg.colegio].openPopup();
+  const cfg=DEV[alias],school=SCHOOLS[cfg.schoolId];
+  if(_map) _map.setView([school.lat,school.lng],15);
+  if(_markers[cfg.schoolId]) _markers[cfg.schoolId].openPopup();
   renderTimeline(alias);
 }
 
@@ -337,74 +423,26 @@ function renderTimeline(alias){
   const sec=document.getElementById("tlSection");
   if(!alias){sec.style.display="none";return;}
   sec.style.display="block";
-  const cfg=DEV[alias];
-  document.getElementById("tlTitle").textContent=`${cfg.aula} — intensidad por hora`;
-
+  document.getElementById("tlTitle").textContent=`${DEV[alias].aula} — intensidad por hora`;
   const hours=Array.from({length:9},(_,i)=>i+7);
   const grid=document.getElementById("tlGrid");
   grid.innerHTML="";
-
   _weekDays.forEach(date=>{
     const dayRows=_allRows.filter(r=>r.alias===alias&&r.timestamp.startsWith(date));
     const lbl=new Date(date+"T12:00").toLocaleDateString("es",{weekday:"short",day:"numeric"});
-    const row=document.createElement("div");
-    row.className="tl-row";
     const barsHtml=hours.map(h=>{
       const hr=dayRows.filter(r=>new Date(r.timestamp).getHours()===h);
       const avg=hr.length?hr.reduce((s,r)=>s+(r.watts||0),0)/hr.length:undefined;
-      const col=hr.length?wColor(avg):"#e8e6df";
-      const tip=hr.length?`${h}:00 · ${avg.toFixed(1)}W`:`${h}:00 · sin datos`;
-      return `<div class="tl-cell" style="background:${col}" title="${tip}"></div>`;
+      return `<div class="tl-cell" style="background:${hr.length?wColor(avg):"#e8e6df"}" title="${hr.length?h+":00 · "+avg.toFixed(1)+"W":h+":00 · sin datos"}"></div>`;
     }).join("");
+    const row=document.createElement("div");
+    row.className="tl-row";
     row.innerHTML=`<div class="tl-lbl">${lbl}</div><div class="tl-bars">${barsHtml}</div>`;
     grid.appendChild(row);
   });
 }
 
-function renderAlerts(dOff){
-  const alerts=Object.entries(dOff).filter(([,v])=>v!==null&&v>0).sort(([,a],[,b])=>b-a);
-  const sec=document.getElementById("alertSection");
-  if(!alerts.length){sec.style.display="none";return;}
-  sec.style.display="block";
-  const list=document.getElementById("alertList");
-  list.innerHTML="";
-  alerts.forEach(([alias,off])=>{
-    const cfg=DEV[alias];
-    const lvl=off>=2?"red":"amber";
-    const msg=off>=2?`${off} días escolares apagado — visita requerida`:"1 día escolar apagado — monitorear";
-    const el=document.createElement("div");
-    el.className=`alert-item alert-${lvl}`;
-    el.innerHTML=`<div class="alert-name">${cfg.aula} · ${cfg.colegio}</div><div class="alert-reason">${msg}</div>`;
-    list.appendChild(el);
-  });
-}
-
-function renderChart(frames,days7){
-  const wh=frames.map(rows=>{
-    const by={};rows.forEach(r=>{if(r.alias)by[r.alias]=r;});
-    return +Object.values(by).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(1);
-  });
-  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
-  const tc=dark?"#888780":"#6b6a66";
-  const gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
-  new Chart(document.getElementById("trendChart"),{
-    type:"bar",
-    data:{
-      labels:days7.map(d=>d.slice(5)),
-      datasets:[{data:wh,backgroundColor:days7.map((_,i)=>i===6?"#639922":"#97c459"),borderRadius:3}]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}},
-        y:{ticks:{color:tc,font:{size:10},callback:v=>v+"Wh"},grid:{color:gc},border:{display:false}}
-      }
-    }
-  });
-}
-
-main();
+main().catch(e=>{document.getElementById("subtitle").textContent="Error: "+e.message;});
 </script>
 </body>
 </html>
