@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Plug Pilot — Bogotá 2026</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg:       #f7f6f2;
+      --surface:  #ffffff;
+      --border:   rgba(0,0,0,0.1);
+      --text:     #1a1a18;
+      --muted:    #6b6a66;
+      --green:    #3b6d11;
+      --green-bg: #eaf3de;
+      --amber:    #854f0b;
+      --amber-bg: #faeeda;
+      --red:      #a32d2d;
+      --red-bg:   #fcebeb;
+      --radius:   10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:       #1a1a18;
+        --surface:  #242422;
+        --border:   rgba(255,255,255,0.1);
+        --text:     #f0ede6;
+        --muted:    #888780;
+        --green:    #97c459;
+        --green-bg: #27500a;
+        --amber:    #ef9f27;
+        --amber-bg: #633806;
+        --red:      #f09595;
+        --red-bg:   #501313;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+    .header { padding: 24px 28px 16px; border-bottom: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 16px; font-weight: 500; }
+    .header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+    .badge.ok   { background: var(--green-bg); color: var(--green); }
+    .badge.warn { background: var(--amber-bg); color: var(--amber); }
+    .badge.err  { background: var(--red-bg);   color: var(--red); }
+    .main { padding: 20px 28px; max-width: 1100px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+    .metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .metric-value { font-size: 24px; font-weight: 500; }
+    .metric-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .section-title { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+    .plug-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+    .plug-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .plug-card.flagged { border-color: var(--red); border-width: 1px; }
+    .plug-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .plug-name { font-size: 13px; font-weight: 500; }
+    .plug-loc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .dot-on  { background: #639922; }
+    .dot-off { background: #e24b4a; }
+    .dot-low { background: #ef9f27; }
+    .watt-bg { height: 5px; background: var(--border); border-radius: 3px; margin: 8px 0 6px; }
+    .watt-fill { height: 5px; border-radius: 3px; }
+    .plug-stats { display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
+    .plug-stats b { color: var(--text); font-weight: 500; }
+    .heatmap { display: grid; grid-template-columns: 80px repeat(5, 1fr); gap: 3px; margin-bottom: 24px; font-size: 11px; }
+    .hm-label { color: var(--muted); display: flex; align-items: center; }
+    .hm-day   { color: var(--muted); text-align: center; padding-bottom: 4px; font-size: 10px; }
+    .hm-cell  { height: 26px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; }
+    .flag-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .flag-item { background: var(--surface); border: 0.5px solid var(--border); border-left: 3px solid var(--red); border-radius: var(--radius); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+    .flag-name   { font-size: 13px; font-weight: 500; }
+    .flag-reason { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .chart-wrap { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 24px; }
+    .last-updated { font-size: 11px; color: var(--muted); text-align: center; padding: 12px; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 700px) {
+      .metrics   { grid-template-columns: repeat(2, 1fr); }
+      .plug-grid { grid-template-columns: repeat(2, 1fr); }
+      .heatmap   { grid-template-columns: 60px repeat(5, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Smart Plug Pilot — Bogotá 2026</h1>
+    <p id="subtitle">Cargando datos...</p>
+  </div>
+  <span class="badge" id="status-badge">—</span>
+</div>
+
+<div class="main">
+  <div id="loading" class="loading">Leyendo CSVs del repositorio...</div>
+  <div id="content" style="display:none">
+
+    <div class="metrics" id="metrics"></div>
+
+    <p class="section-title">Estado por plug — última lectura</p>
+    <div class="plug-grid" id="plugGrid"></div>
+
+    <p class="section-title">Heatmap de uso semanal (horas ON en horario escolar)</p>
+    <div class="heatmap" id="heatmap"></div>
+    <div style="display:flex;gap:12px;margin-bottom:24px;font-size:10px;color:var(--muted);">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#c0dd97;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>&lt;4h</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#639922;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>4–7h</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#3b6d11;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>&gt;7h</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:rgba(226,75,74,0.15);border:0.5px solid #e24b4a;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Apagado</span>
+    </div>
+
+    <div id="flagSection" style="display:none">
+      <p class="section-title">Banderas activas</p>
+      <div class="flag-list" id="flagList"></div>
+    </div>
+
+    <p class="section-title">Consumo diario — últimos 7 días (Wh total)</p>
+    <div class="chart-wrap">
+      <div style="position:relative;height:180px;">
+        <canvas id="trendChart" role="img" aria-label="Consumo diario en Wh de todos los plugs en los últimos 7 días">Gráfico de consumo diario.</canvas>
+      </div>
+    </div>
+
+    <p class="last-updated" id="lastUpdated"></p>
+  </div>
+</div>
+
+<script>
+const REPO_RAW = "https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
+const SCHOOL_START = 7;
+const SCHOOL_END   = 16;
+const FLAG_DAYS    = 1;
+
+const DEVICES = {
+  lamp:   { aula: "Aula 101", colegio: "Colombia School 1" },
+  tv:     { aula: "Aula 102", colegio: "Colombia School 2" },
+  air:    { aula: "Aula 103", colegio: "Colombia School 3" },
+  coffee: { aula: "Aula 104", colegio: "Colombia School 4" },
+  eco:    { aula: "Aula 201", colegio: "Colombia School 5" },
+  fridge: { aula: "Aula 202", colegio: "Colombia School 6" },
+};
+
+function getLast7Days() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+function getWeekDays() {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1);
+  const days = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+async function fetchCSV(date) {
+  const url = `${REPO_RAW}/energy_logs/${date}.csv`;
+  return new Promise(resolve => {
+    Papa.parse(url, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      complete: r => resolve(r.data || []),
+      error: () => resolve([])
+    });
+  });
+}
+
+function isSchoolHour(ts) {
+  const d = new Date(ts);
+  const h = d.getHours();
+  const dow = d.getDay();
+  return dow >= 1 && dow <= 5 && h >= SCHOOL_START && h < SCHOOL_END;
+}
+
+function intensityColor(watts) {
+  if (watts <= 2)  return "#e24b4a";
+  if (watts <= 10) return "#ef9f27";
+  if (watts <= 28) return "#639922";
+  if (watts <= 42) return "#3b6d11";
+  return "#888780";
+}
+
+function hmColor(hours) {
+  if (hours === 0)  return "background:rgba(226,75,74,0.12);border:0.5px solid rgba(226,75,74,0.4);color:#a32d2d;";
+  if (hours < 4)   return "background:#c0dd97;color:#27500a;";
+  if (hours <= 7)  return "background:#639922;color:#eaf3de;";
+  return "background:#3b6d11;color:#c0dd97;";
+}
+
+async function main() {
+  const days7  = getLast7Days();
+  const today  = days7[6];
+  const weekDays = getWeekDays();
+
+  const allFrames = await Promise.all(days7.map(fetchCSV));
+  const allRows   = allFrames.flat().filter(r => r.timestamp);
+
+  if (!allRows.length) {
+    document.getElementById("loading").textContent = "No se encontraron datos. Verifica que el repo es público o que los CSVs existen.";
+    return;
+  }
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("content").style.display = "block";
+
+  const todayRows = allRows.filter(r => r.timestamp && r.timestamp.startsWith(today));
+  const latestByAlias = {};
+  todayRows.forEach(r => { latestByAlias[r.alias] = r; });
+
+  const activeNow = Object.values(latestByAlias).filter(r => r.is_on).length;
+  const totalPlugs = Object.keys(DEVICES).length;
+
+  const schoolRows = allRows.filter(r => isSchoolHour(r.timestamp));
+  const uptimeByAlias = {};
+  Object.keys(DEVICES).forEach(a => {
+    const rows = schoolRows.filter(r => r.alias === a);
+    const on   = rows.filter(r => r.is_on).length;
+    uptimeByAlias[a] = rows.length ? Math.round((on / rows.length) * 100) : null;
+  });
+  const avgUptime = Math.round(Object.values(uptimeByAlias).filter(v => v !== null).reduce((s, v) => s + v, 0) / totalPlugs);
+
+  const todayWh = Object.values(latestByAlias).reduce((s, r) => s + (r.today_wh || 0), 0).toFixed(1);
+
+  const weekSchoolRows = allRows.filter(r => weekDays.includes(r.timestamp?.slice(0,10)) && isSchoolHour(r.timestamp));
+  const flagsByAlias = {};
+  Object.keys(DEVICES).forEach(a => {
+    const days = new Set(weekSchoolRows.filter(r => r.alias === a && r.timestamp).map(r => r.timestamp.slice(0,10)));
+    const daysOn = new Set(weekSchoolRows.filter(r => r.alias === a && r.is_on).map(r => r.timestamp.slice(0,10)));
+    const daysOff = [...days].filter(d => !daysOn.has(d)).length;
+    flagsByAlias[a] = daysOff > FLAG_DAYS;
+  });
+  const flagCount = Object.values(flagsByAlias).filter(Boolean).length;
+
+  document.getElementById("subtitle").textContent = `${totalPlugs} dispositivos · ${today} · Datos cada 5 min`;
+  const badge = document.getElementById("status-badge");
+  if (flagCount === 0) { badge.textContent = "Todo normal"; badge.className = "badge ok"; }
+  else { badge.textContent = `${flagCount} bandera${flagCount > 1 ? "s" : ""} activa${flagCount > 1 ? "s" : ""}`; badge.className = "badge warn"; }
+
+  document.getElementById("metrics").innerHTML = `
+    <div class="metric"><div class="metric-label">Filtros activos ahora</div><div class="metric-value">${activeNow} <span style="font-size:16px;color:var(--muted)">/ ${totalPlugs}</span></div><div class="metric-sub">${Math.round(activeNow/totalPlugs*100)}% de cobertura</div></div>
+    <div class="metric"><div class="metric-label">Uptime esta semana</div><div class="metric-value">${avgUptime}%</div><div class="metric-sub">En horario escolar</div></div>
+    <div class="metric"><div class="metric-label">Consumo hoy</div><div class="metric-value">${todayWh} <span style="font-size:16px;color:var(--muted)">Wh</span></div><div class="metric-sub">${totalPlugs} plugs acumulados</div></div>
+    <div class="metric"><div class="metric-label">Visitas sugeridas</div><div class="metric-value">${flagCount}</div><div class="metric-sub">Aulas con bandera</div></div>
+  `;
+
+  const plugGrid = document.getElementById("plugGrid");
+  Object.entries(DEVICES).forEach(([alias, cfg]) => {
+    const latest = latestByAlias[alias];
+    const uptime = uptimeByAlias[alias];
+    const flagged = flagsByAlias[alias];
+    const watts = latest ? (latest.watts || 0) : 0;
+    const isOn  = latest ? latest.is_on : 0;
+    const pct   = Math.min(100, Math.round((watts / 42) * 100));
+    const dotCls = watts > 28 ? "dot-on" : watts > 10 ? "dot-low" : watts > 2 ? "dot-low" : "dot-off";
+    const intensityLabel = watts > 28 ? "alta" : watts > 10 ? "media" : watts > 2 ? "baja" : "apagado";
+
+    plugGrid.innerHTML += `
+      <div class="plug-card ${flagged ? "flagged" : ""}">
+        <div class="plug-top">
+          <div>
+            <div class="plug-name">${cfg.aula}</div>
+            <div class="plug-loc">${cfg.colegio}</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);text-align:right;">
+            <span class="status-dot ${dotCls}"></span>${intensityLabel}<br>
+            <span style="color:var(--text);font-weight:500;">${watts.toFixed(1)}W</span>
+            ${flagged ? '<br><span style="color:var(--red);">⚑ bandera</span>' : ""}
+          </div>
+        </div>
+        <div class="watt-bg"><div class="watt-fill" style="width:${pct}%;background:${intensityColor(watts)};"></div></div>
+        <div class="plug-stats">
+          <span>Uptime: <b>${uptime !== null ? uptime + "%" : "—"}</b></span>
+          <span>Hoy: <b>${latest ? (latest.today_wh || 0).toFixed(1) + " Wh" : "—"}</b></span>
+        </div>
+      </div>`;
+  });
+
+  const hm = document.getElementById("heatmap");
+  const dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie"];
+  hm.innerHTML = "<div></div>" + dayLabels.map(d => `<div class="hm-day">${d}</div>`).join("");
+  Object.entries(DEVICES).forEach(([alias, cfg]) => {
+    hm.innerHTML += `<div class="hm-label" style="font-size:11px;">${cfg.aula}</div>`;
+    weekDays.forEach(date => {
+      const rows = schoolRows.filter(r => r.alias === alias && r.timestamp?.startsWith(date));
+      const hoursOn = rows.filter(r => r.is_on).length * (5/60);
+      hm.innerHTML += `<div class="hm-cell" style="${hmColor(hoursOn)}">${rows.length ? hoursOn.toFixed(1) + "h" : "—"}</div>`;
+    });
+  });
+
+  const flaggedAliases = Object.entries(flagsByAlias).filter(([,v]) => v).map(([a]) => a);
+  if (flaggedAliases.length) {
+    document.getElementById("flagSection").style.display = "block";
+    const fl = document.getElementById("flagList");
+    flaggedAliases.forEach(alias => {
+      const cfg = DEVICES[alias];
+      fl.innerHTML += `
+        <div class="flag-item">
+          <div>
+            <div class="flag-name">${cfg.aula} — ${cfg.colegio}</div>
+            <div class="flag-reason">Filtro apagado &gt;${FLAG_DAYS} día escolar esta semana · Uptime: ${uptimeByAlias[alias]}%</div>
+          </div>
+        </div>`;
+    });
+  }
+
+  const dailyWh = days7.map((date, i) => {
+    const rows = allFrames[i];
+    const byAlias = {};
+    rows.forEach(r => { if (r.alias) byAlias[r.alias] = r; });
+    return Object.values(byAlias).reduce((s, r) => s + (r.today_wh || 0), 0);
+  });
+
+  const isDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const textColor = isDark ? "#888780" : "#6b6a66";
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const barColors = days7.map((d, i) => i === 6 ? "#639922" : "#97c459");
+
+  new Chart(document.getElementById("trendChart"), {
+    type: "bar",
+    data: {
+      labels: days7.map(d => d.slice(5)),
+      datasets: [{ data: dailyWh, backgroundColor: barColors, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor, font: { size: 11 } }, grid: { display: false }, border: { display: false } },
+        y: { ticks: { color: textColor, font: { size: 11 }, callback: v => v + " Wh" }, grid: { color: gridColor }, border: { display: false } }
+      }
+    }
+  });
+
+  const lastTs = allRows.map(r => r.timestamp).sort().pop();
+  document.getElementById("lastUpdated").textContent = `Última lectura: ${lastTs || "—"} · Se actualiza automáticamente cada 5 min`;
+}
+
+main();
+</script>
+</body>
+</html>
