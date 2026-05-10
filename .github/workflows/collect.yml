@@ -1,0 +1,40 @@
+name: Collect plug data
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run collector (single shot)
+        env:
+          TAPO_EMAIL:    ${{ secrets.TAPO_EMAIL }}
+          TAPO_PASSWORD: ${{ secrets.TAPO_PASSWORD }}
+          TIMEZONE:      America/Bogota
+          SCHOOL_START:  "07:00"
+          SCHOOL_END:    "16:00"
+          FLAG_THRESHOLD_DAYS: "1"
+        run: uv run python scripts/collect.py --once
+
+      - name: Commit CSV data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add energy_logs/
+          git diff --staged --quiet || git commit -m "data: $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push
