@@ -13,12 +13,12 @@ POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "300"))
 FLAG_THRESHOLD_DAYS = int(os.getenv("FLAG_THRESHOLD_DAYS", "1"))
 
 DEVICES: dict[str, dict] = {
-    "lamp":   {"aula": "Aula 101", "colegio": "Colombia School 1"},
-    "tv":     {"aula": "Aula 102", "colegio": "Colombia School 2"},
-    "air":    {"aula": "Aula 103", "colegio": "Colombia School 3"},
-    "coffee": {"aula": "Aula 104", "colegio": "Colombia School 4"},
-    "eco":    {"aula": "Aula 201", "colegio": "Colombia School 5"},
-    "fridge": {"aula": "Aula 202", "colegio": "Colombia School 6"},
+    "air purifier": {"aula": "Aula 101", "colegio": "Colombia School 1"},
+    "umy eco":      {"aula": "Aula 102", "colegio": "Colombia School 2"},
+    "lamp":         {"aula": "Aula 103", "colegio": "Colombia School 3"},
+    "coffee maker": {"aula": "Aula 104", "colegio": "Colombia School 4"},
+    "fridge":       {"aula": "Aula 201", "colegio": "Colombia School 5"},
+    "tv":           {"aula": "Aula 202", "colegio": "Colombia School 6"},
 }
 
 SQAIR_INTENSITY = {

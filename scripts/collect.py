@@ -20,7 +20,7 @@ signal.signal(signal.SIGTERM, handle_exit)
 
 async def get_cloud_devices():
     from tplinkcloud import TPLinkDeviceManager
-    manager = TPLinkDeviceManager(TAPO_EMAIL, TAPO_PASSWORD, include_kasa=False)
+    manager = TPLinkDeviceManager(TAPO_EMAIL, TAPO_PASSWORD, )
     all_devices = await manager.get_devices()
     return {d.get_alias(): d for d in all_devices}
 
