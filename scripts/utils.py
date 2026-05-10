@@ -23,19 +23,19 @@ FLAG_THRESHOLD_DAYS = int(os.getenv("FLAG_THRESHOLD_DAYS", "1"))
 
 # ---------------------------------------------------------------------------
 # Registro de dispositivos
-# Completar después de correr setup_plugs.py
+# "tapo_alias" debe coincidir exactamente con el nombre del dispositivo en la
+# app Tapo (el que asignaste con setup_plugs.py o manualmente en la app).
 # ---------------------------------------------------------------------------
-# Formato: { "alias": { "ip": str, "aula": str, "colegio": str } }
+# Formato: { "tapo_alias": { "aula": str, "colegio": str } }
 
 DEVICES: dict[str, dict] = {
-    "lamp": {"ip": "192.168.0.241", "aula": "Aula 101", "colegio": "Colombia School 1"},
-    "tv": {"ip": "192.168.0.232", "aula": "Aula 102", "colegio": "Colombia School 2"},
-    "air": {"ip": "192.168.0.144", "aula": "Aula 103", "colegio": "Colombia School 3"},
-    "coffee": {"ip": "192.168.0.119", "aula": "Aula 104", "colegio": "Colombia School 4"},
-    "eco": {"ip": "192.168.0.227", "aula": "Aula 201", "colegio": "Colombia School 5"},
-    "fridge": {"ip": "192.168.0.237", "aula": "Aula 202", "colegio": "Colombia School 6"},
+    "lamp":   {"aula": "Aula 101", "colegio": "Colombia School 1"},
+    "tv":     {"aula": "Aula 102", "colegio": "Colombia School 2"},
+    "air":    {"aula": "Aula 103", "colegio": "Colombia School 3"},
+    "coffee": {"aula": "Aula 104", "colegio": "Colombia School 4"},
+    "eco":    {"aula": "Aula 201", "colegio": "Colombia School 5"},
+    "fridge": {"aula": "Aula 202", "colegio": "Colombia School 6"},
 }
-
 
 # ---------------------------------------------------------------------------
 # Wattage del Sqair por intensidad

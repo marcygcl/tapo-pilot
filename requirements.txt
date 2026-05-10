@@ -1,5 +1,4 @@
-tapo==0.8.8
+tplink-cloud-api>=5.2.0
 pandas>=2.0.0
 python-dotenv>=1.0.0
-schedule>=1.2.0
 rich>=13.0.0
