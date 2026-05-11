@@ -9,64 +9,32 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
-    :root{
-      --bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);
-      --text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;
-      --green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;
-      --amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;
-      --red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;
-      --blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;
-      --purple:#534ab7;--purple-bg:#eeedfe;
-      --r:10px;
-    }
-    @media(prefers-color-scheme:dark){:root{
-      --bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);
-      --text:#eeebe3;--muted:#888780;--hint:#5f5e5a;
-      --green:#97c459;--green-bg:#27500a;--green-mid:#639922;
-      --amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;
-      --red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;
-      --blue:#85b7eb;--blue-bg:#0c447c;--blue-mid:#378add;
-      --purple:#afa9ec;--purple-bg:#3c3489;
-    }}
+    :root{--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);--text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;--green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;--amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;--red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;--blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;--purple:#534ab7;--purple-bg:#eeedfe;--r:10px;}
+    @media(prefers-color-scheme:dark){:root{--bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);--text:#eeebe3;--muted:#888780;--hint:#5f5e5a;--green:#97c459;--green-bg:#27500a;--green-mid:#639922;--amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;--red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;--blue:#85b7eb;--blue-bg:#0c447c;--blue-mid:#378add;--purple:#afa9ec;--purple-bg:#3c3489;}}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-
-    /* ── Topbar ── */
     .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
-    .topbar h1{font-size:15px;font-weight:500;}
-    .topbar p{font-size:11px;color:var(--muted);margin-top:1px;}
+    .topbar h1{font-size:15px;font-weight:500;}.topbar p{font-size:11px;color:var(--muted);margin-top:1px;}
     .topbar-right{display:flex;align-items:center;gap:8px;}
     .pill{font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;white-space:nowrap;}
-    .pill-green{background:var(--green-bg);color:var(--green);}
-    .pill-red{background:var(--red-bg);color:var(--red);}
-    .pill-blue{background:var(--blue-bg);color:var(--blue);}
+    .pill-green{background:var(--green-bg);color:var(--green);}.pill-red{background:var(--red-bg);color:var(--red);}.pill-blue{background:var(--blue-bg);color:var(--blue);}
     .sync{font-size:11px;color:var(--hint);}
-
-    /* ── Tabs ── */
-    .tabs{display:flex;gap:0;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
+    .tabs{display:flex;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
     .tab{padding:10px 24px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color 0.15s,border-color 0.15s;}
-    .tab:hover{color:var(--text);}
-    .tab.active{color:var(--text);border-bottom-color:var(--text);}
+    .tab:hover{color:var(--text);}.tab.active{color:var(--text);border-bottom-color:var(--text);}
+    .panel{display:none;flex:1;overflow:hidden;}.panel.active{display:flex;}
 
-    /* ── Tab panels ── */
-    .panel{display:none;flex:1;overflow:hidden;}
-    .panel.active{display:flex;}
-
-    /* ══ TAB 1 — Resumen ══ */
+    /* TAB 1 */
     #tab-resumen{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:20px;}
-
     .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
     .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 16px;}
     .kpi-label{font-size:11px;color:var(--muted);margin-bottom:4px;}
     .kpi-value{font-size:26px;font-weight:500;}
     .kpi-sub{font-size:11px;color:var(--hint);margin-top:3px;}
-
     .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;}
-
     .school-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
     .school-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;}
-    .school-card.flag-red{border-color:var(--red-mid);}
-    .school-card.flag-amber{border-color:var(--amber-mid);}
+    .school-card.flag-red{border-color:var(--red-mid);}.school-card.flag-amber{border-color:var(--amber-mid);}
     .school-name{font-size:13px;font-weight:500;margin-bottom:2px;}
     .school-meta{font-size:11px;color:var(--muted);margin-bottom:10px;}
     .school-sem{width:10px;height:10px;border-radius:50%;position:absolute;top:14px;right:14px;}
@@ -74,29 +42,23 @@
     .school-stat{font-size:11px;color:var(--muted);}
     .school-stat b{color:var(--text);font-weight:500;}
     .nudge-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:8px;background:var(--purple-bg);color:var(--purple);}
-
     .alert-cards{display:flex;flex-direction:column;gap:8px;}
     .alert-card{background:var(--surface);border:0.5px solid var(--border);border-left:3px solid;border-radius:var(--r);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;}
-    .alert-card.red{border-left-color:var(--red-mid);}
-    .alert-card.amber{border-left-color:var(--amber-mid);}
-    .alert-info{}
-    .alert-name{font-size:13px;font-weight:500;}
-    .alert-reason{font-size:11px;color:var(--muted);margin-top:2px;}
-    .alert-action{font-size:11px;padding:5px 12px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);color:var(--text);cursor:default;white-space:nowrap;}
+    .alert-card.red{border-left-color:var(--red-mid);}.alert-card.amber{border-left-color:var(--amber-mid);}
+    .alert-name{font-size:13px;font-weight:500;}.alert-reason{font-size:11px;color:var(--muted);margin-top:2px;}
+    .alert-action{font-size:11px;padding:5px 12px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);color:var(--text);white-space:nowrap;}
     .alert-action.red{background:var(--red-bg);color:var(--red);border-color:var(--red-mid);}
     .alert-action.amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-mid);}
-
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
     .chart-box{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;}
-
     .uptime-bars{display:flex;flex-direction:column;gap:8px;}
     .uptime-row{display:flex;align-items:center;gap:10px;}
-    .uptime-label{font-size:11px;color:var(--muted);width:120px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .uptime-label{font-size:11px;color:var(--muted);width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .uptime-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;}
-    .uptime-fill{height:100%;border-radius:4px;transition:width 0.4s;}
+    .uptime-fill{height:100%;border-radius:4px;}
     .uptime-pct{font-size:11px;font-weight:500;width:36px;text-align:right;flex-shrink:0;}
 
-    /* ══ TAB 2 — Mapa ══ */
+    /* TAB 2 */
     #tab-mapa{flex-direction:row;}
     .map-wrap{flex:1;position:relative;}
     #map{width:100%;height:100%;}
@@ -109,10 +71,8 @@
     .map-sec-title{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
     .plug-list{display:flex;flex-direction:column;gap:5px;}
     .plug-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color 0.15s;}
-    .plug-row:hover{border-color:var(--muted);}
-    .plug-row.sel{border-color:var(--blue);background:var(--blue-bg);}
-    .plug-row.amber{border-color:var(--amber-mid);}
-    .plug-row.red{border-color:var(--red-mid);}
+    .plug-row:hover{border-color:var(--muted);}.plug-row.sel{border-color:var(--blue);background:var(--blue-bg);}
+    .plug-row.amber{border-color:var(--amber-mid);}.plug-row.red{border-color:var(--red-mid);}
     .sem{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
     .plug-info{flex:1;min-width:0;}
     .plug-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -130,7 +90,7 @@
 
     @media(max-width:900px){
       .kpi-grid{grid-template-columns:repeat(2,1fr);}
-      .school-cards{grid-template-columns:repeat(2,1fr);}
+      .school-cards{grid-template-columns:1fr;}
       .two-col{grid-template-columns:1fr;}
       #tab-mapa{flex-direction:column;}
       .map-side{width:100%;height:280px;border-left:none;border-top:0.5px solid var(--border);}
@@ -138,55 +98,41 @@
   </style>
 </head>
 <body>
-
 <div class="topbar">
-  <div>
-    <h1 id="pilot-title">Smart Plug Pilot — Bogotá 2026</h1>
-    <p id="subtitle">Cargando datos...</p>
-  </div>
+  <div><h1 id="pilot-title">Smart Plug Pilot — Bogotá 2026</h1><p id="subtitle">Cargando datos...</p></div>
   <div class="topbar-right">
     <span class="pill pill-blue" id="active-badge">—</span>
     <span class="pill pill-green" id="flag-badge">—</span>
     <span class="sync" id="last-sync">—</span>
   </div>
 </div>
-
 <div class="tabs">
   <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
   <div class="tab" onclick="switchTab('mapa',this)">Mapa</div>
 </div>
 
-<!-- ══ TAB 1: RESUMEN ══ -->
 <div class="panel active" id="tab-resumen">
-
   <div class="kpi-grid" id="kpiGrid"></div>
-
   <div>
     <div class="section-title">Estado por colegio</div>
     <div class="school-cards" id="schoolCards"></div>
   </div>
-
-  <div id="alertSection">
+  <div id="alertSection" style="display:none">
     <div class="section-title">Alertas activas</div>
     <div class="alert-cards" id="alertCards"></div>
   </div>
-
   <div class="two-col">
     <div class="chart-box">
       <div class="section-title" style="margin-bottom:12px;">Consumo diario — últimos 7 días (Wh)</div>
-      <div style="position:relative;height:150px;">
-        <canvas id="trendChart" role="img" aria-label="Consumo diario Wh últimos 7 días">Gráfico de consumo.</canvas>
-      </div>
+      <div style="position:relative;height:150px;"><canvas id="trendChart" role="img" aria-label="Consumo diario">Gráfico.</canvas></div>
     </div>
     <div class="chart-box">
-      <div class="section-title" style="margin-bottom:12px;">Uptime semanal por aula</div>
+      <div class="section-title" style="margin-bottom:12px;">Uptime 24h por aula — últimos 7 días</div>
       <div class="uptime-bars" id="uptimeBars"></div>
     </div>
   </div>
-
 </div>
 
-<!-- ══ TAB 2: MAPA ══ -->
 <div class="panel" id="tab-mapa">
   <div class="map-wrap">
     <div id="map"></div>
@@ -204,7 +150,7 @@
       <div class="plug-list" id="plugList"></div>
     </div>
     <div class="tl-wrap" id="tlSection" style="display:none">
-      <div class="tl-title" id="tlTitle">Intensidad semanal</div>
+      <div class="tl-title" id="tlTitle">Intensidad por hora</div>
       <div class="tl-grid" id="tlGrid"></div>
       <div class="leg">
         <span><span class="leg-dot" style="background:#3b6d11"></span>Alta</span>
@@ -222,18 +168,20 @@ const REPO="https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
 let CFG=null,DEV={},SCHOOLS={};
 let _map,_mapInit=false,_markers={},_allRows=[],_weekDays=[],_selAlias=null;
 let _dOff={},_uptime={},_latest={};
+const NUDGE_LABELS={"sms":"SMS","whatsapp":"WhatsApp","visita":"Visita presencial","llamada":"Llamada","tbd":"Por definir"};
 
 function switchTab(id,el){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
   el.classList.add("active");
   document.getElementById("tab-"+id).classList.add("active");
-  if(id==="mapa"&&!_mapInit){ initMap(); _mapInit=true; }
+  if(id==="mapa"&&!_mapInit){initMap();_mapInit=true;}
 }
 
 const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toISOString().slice(0,10);});
 const getWeek=()=>{const t=new Date(),m=new Date(t);m.setDate(t.getDate()-t.getDay()+1);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});};
-const inSchool=ts=>{const d=new Date(ts),h=d.getHours(),w=d.getDay();return w>=1&&w<=5&&h>=7&&h<16;};
+
+// Sin filtro de horario escolar — todo 24/7
 const wColor=w=>{if(w===undefined||w===null)return"#d3d1c7";if(w<=2)return"#e24b4a";if(w<=10)return"#ef9f27";if(w<=28)return"#639922";return"#3b6d11";};
 const semColor=v=>v===null?"#888780":v===0?"#639922":v===1?"#ef9f27":"#e24b4a";
 
@@ -242,8 +190,6 @@ const fetchCSV=date=>new Promise(res=>{
     complete:r=>res((r.data||[]).filter(r=>r&&r.timestamp&&typeof r.timestamp==="string")),
     error:()=>res([])});
 });
-
-const NUDGE_LABELS={"sms":"SMS","whatsapp":"WhatsApp","visita":"Visita presencial","llamada":"Llamada","tbd":"Por definir"};
 
 async function main(){
   const resp=await fetch(`${REPO}/config.json`);
@@ -262,19 +208,23 @@ async function main(){
   _weekDays=week;
   const frames=await Promise.all(days7.map(fetchCSV));
   _allRows=frames.flat();
-  const todayRows=frames[6];
+  const todayRows=frames[frames.length-1].length ? frames[frames.length-1] : frames[frames.length-2];
 
-  todayRows.forEach(r=>{_latest[r.alias]=r;});
+  // Latest reading per alias — sin filtro horario
+  _allRows.forEach(r=>{_latest[r.alias]=r;});
 
-  const schoolRows=_allRows.filter(r=>inSchool(r.timestamp));
-  const weekSchool=_allRows.filter(r=>week.includes(r.timestamp.slice(0,10))&&inSchool(r.timestamp));
-
+  // Uptime 24/7 — porcentaje de lecturas con is_on=1
   Object.keys(DEV).forEach(a=>{
-    const rows=schoolRows.filter(r=>r.alias===a);
+    const rows=_allRows.filter(r=>r.alias===a);
     const on=rows.filter(r=>r.is_on).length;
     _uptime[a]=rows.length?Math.round(on/rows.length*100):null;
-    const wdays=new Set(weekSchool.filter(r=>r.alias===a).map(r=>r.timestamp.slice(0,10)));
-    const won=new Set(weekSchool.filter(r=>r.alias===a&&r.is_on).map(r=>r.timestamp.slice(0,10)));
+  });
+
+  // Banderas: días sin ninguna lectura ON (24/7, L-V)
+  const weekRows=_allRows.filter(r=>week.includes(r.timestamp.slice(0,10)));
+  Object.keys(DEV).forEach(a=>{
+    const wdays=new Set(weekRows.filter(r=>r.alias===a).map(r=>r.timestamp.slice(0,10)));
+    const won=new Set(weekRows.filter(r=>r.alias===a&&r.is_on).map(r=>r.timestamp.slice(0,10)));
     _dOff[a]=wdays.size?[...wdays].filter(d=>!won.has(d)).length:null;
   });
 
@@ -285,68 +235,62 @@ async function main(){
   const avgUp=ups.length?Math.round(ups.reduce((a,b)=>a+b,0)/ups.length):0;
   const flags=Object.values(_dOff).filter(v=>v!==null&&v>CFG.pilot.flag_threshold_days).length;
   const wh=Object.values(_latest).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(0);
-  const lastTs=todayRows.length?todayRows[todayRows.length-1].timestamp.slice(11,16):"—";
+  const lastTs=_allRows.length?_allRows[_allRows.length-1].timestamp.slice(0,16).replace("T"," "):"—";
 
-  document.getElementById("subtitle").textContent=`${total} plugs · ${today} · sync cada 5 min`;
+  document.getElementById("subtitle").textContent=`${total} plugs · monitoreo 24/7 · sync cada 5 min`;
   document.getElementById("active-badge").textContent=`${active}/${total} activos`;
   const fb=document.getElementById("flag-badge");
   fb.textContent=flags?`${flags} bandera${flags>1?"s":""}`:"Sin banderas";
   fb.className=`pill ${flags?"pill-red":"pill-green"}`;
   document.getElementById("last-sync").textContent=`Última: ${lastTs}`;
 
-  // KPIs
   document.getElementById("kpiGrid").innerHTML=`
     <div class="kpi"><div class="kpi-label">Filtros activos ahora</div><div class="kpi-value">${active}<span style="font-size:16px;color:var(--muted)">/${total}</span></div><div class="kpi-sub">${Math.round(active/total*100)}% de cobertura</div></div>
-    <div class="kpi"><div class="kpi-label">Uptime semanal</div><div class="kpi-value">${avgUp?avgUp+"%":"—"}</div><div class="kpi-sub">en horario escolar</div></div>
-    <div class="kpi"><div class="kpi-label">Banderas activas</div><div class="kpi-value" style="color:${flags?"var(--red-mid)":"var(--green-mid)"}">${flags}</div><div class="kpi-sub">visitas sugeridas</div></div>
+    <div class="kpi"><div class="kpi-label">Uptime promedio 7 días</div><div class="kpi-value">${avgUp?avgUp+"%":"—"}</div><div class="kpi-sub">monitoreo 24/7</div></div>
+    <div class="kpi"><div class="kpi-label">Banderas esta semana</div><div class="kpi-value" style="color:${flags?"var(--red-mid)":"var(--green-mid)"}">${flags}</div><div class="kpi-sub">días completamente apagado</div></div>
     <div class="kpi"><div class="kpi-label">Consumo hoy</div><div class="kpi-value">${wh}<span style="font-size:16px;color:var(--muted)"> Wh</span></div><div class="kpi-sub">todos los plugs</div></div>
   `;
 
-  // School cards
   const cards=document.getElementById("schoolCards");
   cards.innerHTML="";
   for(const [sid,data] of Object.entries(SCHOOLS)){
     const maxOff=schoolMaxOff(sid);
     const color=semColor(maxOff===-1?null:maxOff);
     const flagCls=maxOff>=2?"flag-red":maxOff===1?"flag-amber":"";
-    const schoolUptime=data.plugs.map(a=>_uptime[a]).filter(v=>v!==null);
-    const avgSchoolUp=schoolUptime.length?Math.round(schoolUptime.reduce((a,b)=>a+b,0)/schoolUptime.length):null;
-    const nudgeLabel=NUDGE_LABELS[data.nudge]||data.nudge;
+    const schoolUp=data.plugs.map(a=>_uptime[a]).filter(v=>v!==null);
+    const avgSchUp=schoolUp.length?Math.round(schoolUp.reduce((a,b)=>a+b,0)/schoolUp.length):null;
     cards.innerHTML+=`
       <div class="school-card ${flagCls}">
         <div class="school-sem" style="background:${color}"></div>
         <div class="school-name">${data.name}</div>
-        <div class="school-meta">${data.plugs.length} aulas monitoreadas</div>
+        <div class="school-meta">${data.plugs.length} aulas · monitoreo 24/7</div>
         <div class="school-stats">
-          <div class="school-stat">Uptime <b>${avgSchoolUp!==null?avgSchoolUp+"%":"—"}</b></div>
+          <div class="school-stat">Uptime <b>${avgSchUp!==null?avgSchUp+"%":"—"}</b></div>
           <div class="school-stat">Días off <b>${maxOff>=0?maxOff:"—"}</b></div>
         </div>
-        <span class="nudge-badge">Nudge: ${nudgeLabel}</span>
+        <span class="nudge-badge">Nudge: ${NUDGE_LABELS[data.nudge]||data.nudge}</span>
       </div>`;
   }
 
-  // Alerts
   const alertsData=Object.entries(_dOff).filter(([,v])=>v!==null&&v>0).sort(([,a],[,b])=>b-a);
   const alertSec=document.getElementById("alertSection");
-  if(!alertsData.length){ alertSec.style.display="none"; }
-  else {
+  if(alertsData.length){
+    alertSec.style.display="block";
     const ac=document.getElementById("alertCards");
     ac.innerHTML="";
     alertsData.forEach(([alias,off])=>{
       const cfg=DEV[alias],lvl=off>=2?"red":"amber";
-      const actionLabel=off>=2?"Visita requerida":"Monitorear";
       ac.innerHTML+=`
         <div class="alert-card ${lvl}">
-          <div class="alert-info">
+          <div>
             <div class="alert-name">${cfg.aula} · ${cfg.colegio}</div>
-            <div class="alert-reason">${off} día${off>1?"s":""} escolar${off>1?"es":""} apagado · Nudge: ${NUDGE_LABELS[SCHOOLS[cfg.schoolId].nudge]||"—"}</div>
+            <div class="alert-reason">${off} día${off>1?"s":""} sin ninguna lectura ON · Nudge: ${NUDGE_LABELS[SCHOOLS[cfg.schoolId].nudge]||"—"}</div>
           </div>
-          <div class="alert-action ${lvl}">${actionLabel}</div>
+          <div class="alert-action ${lvl}">${off>=2?"Visita requerida":"Monitorear"}</div>
         </div>`;
     });
   }
 
-  // Trend chart
   const dailyWh=frames.map(rows=>{const by={};rows.forEach(r=>{if(r.alias)by[r.alias]=r;});return+Object.values(by).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(1);});
   const dark=matchMedia("(prefers-color-scheme:dark)").matches;
   const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
@@ -356,7 +300,6 @@ async function main(){
       scales:{x:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}},
               y:{ticks:{color:tc,font:{size:10},callback:v=>v+"Wh"},grid:{color:gc},border:{display:false}}}}});
 
-  // Uptime bars
   const ub=document.getElementById("uptimeBars");
   ub.innerHTML="";
   Object.entries(DEV).forEach(([alias,cfg])=>{
@@ -369,7 +312,6 @@ async function main(){
     </div>`;
   });
 
-  // Plug list (mapa tab)
   renderPlugList();
 }
 
@@ -378,11 +320,10 @@ function renderPlugList(){
   list.innerHTML="";
   Object.entries(DEV).forEach(([alias,cfg])=>{
     const r=_latest[alias],off=_dOff[alias],w=r?(r.watts||0):null,on=r?r.is_on:false;
-    const color=semColor(off);
     const row=document.createElement("div");
     row.className=`plug-row ${off>=2?"red":off===1?"amber":""}`;
     row.dataset.alias=alias;
-    row.innerHTML=`<span class="sem" style="background:${color}"></span>
+    row.innerHTML=`<span class="sem" style="background:${semColor(off)}"></span>
       <div class="plug-info"><div class="plug-name">${cfg.aula}</div><div class="plug-meta">${cfg.colegio}</div></div>
       <div class="plug-w" style="color:${on?"var(--green-mid)":"var(--red-mid)"}">${w!==null?w.toFixed(1)+"W":"—"}</div>`;
     row.addEventListener("click",()=>selectPlug(alias));
@@ -393,19 +334,14 @@ function renderPlugList(){
 function initMap(){
   const dark=matchMedia("(prefers-color-scheme:dark)").matches;
   _map=L.map("map",{zoomControl:true}).setView([4.672,-74.058],12);
-  L.tileLayer(dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    {attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(_map);
-
+  L.tileLayer(dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(_map);
   const schoolMaxOff=sid=>{const offs=SCHOOLS[sid].plugs.map(a=>_dOff[a]).filter(v=>v!==null);return offs.length?Math.max(...offs):-1;};
-
   Object.entries(SCHOOLS).forEach(([sid,data])=>{
-    const maxOff=schoolMaxOff(sid);
-    const color=semColor(maxOff===-1?null:maxOff);
+    const maxOff=schoolMaxOff(sid),color=semColor(maxOff===-1?null:maxOff);
     const rows=data.plugs.map(a=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px;"><span>${DEV[a].aula}</span><span style="color:${semColor(_dOff[a])};font-weight:500;">${_dOff[a]===0||_dOff[a]===null?"OK":_dOff[a]===1?"Alerta":"Bandera"}</span></div>`).join("");
-    const nudge=NUDGE_LABELS[data.nudge]||data.nudge;
     const icon=L.divIcon({html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:white;">${data.plugs.length}</div>`,className:"",iconSize:[30,30],iconAnchor:[15,15]});
     const m=L.marker([data.lat,data.lng],{icon}).addTo(_map);
-    m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">Nudge: ${nudge}</div>${rows}</div>`);
+    m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">Nudge: ${NUDGE_LABELS[data.nudge]||data.nudge}</div>${rows}</div>`);
     _markers[sid]=m;
   });
 }
@@ -414,8 +350,8 @@ function selectPlug(alias){
   _selAlias=alias;
   document.querySelectorAll(".plug-row").forEach(r=>r.classList.toggle("sel",r.dataset.alias===alias));
   const cfg=DEV[alias],school=SCHOOLS[cfg.schoolId];
-  if(_map) _map.setView([school.lat,school.lng],15);
-  if(_markers[cfg.schoolId]) _markers[cfg.schoolId].openPopup();
+  if(_map)_map.setView([school.lat,school.lng],15);
+  if(_markers[cfg.schoolId])_markers[cfg.schoolId].openPopup();
   renderTimeline(alias);
 }
 
@@ -423,8 +359,8 @@ function renderTimeline(alias){
   const sec=document.getElementById("tlSection");
   if(!alias){sec.style.display="none";return;}
   sec.style.display="block";
-  document.getElementById("tlTitle").textContent=`${DEV[alias].aula} — intensidad por hora`;
-  const hours=Array.from({length:9},(_,i)=>i+7);
+  document.getElementById("tlTitle").textContent=`${DEV[alias].aula} — consumo por hora`;
+  const hours=Array.from({length:24},(_,i)=>i);
   const grid=document.getElementById("tlGrid");
   grid.innerHTML="";
   _weekDays.forEach(date=>{
