@@ -19,10 +19,19 @@ signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
 async def get_cloud_devices():
+    import base64
     from tplinkcloud import TPLinkDeviceManager
     manager = TPLinkDeviceManager(TAPO_EMAIL, TAPO_PASSWORD)
     all_devices = await manager.get_devices()
-    return {d.get_alias(): d for d in all_devices}
+    result = {}
+    for d in all_devices:
+        alias = d.get_alias()
+        try:
+            alias = base64.b64decode(alias).decode('utf-8')
+        except Exception:
+            pass
+        result[alias] = d
+    return result
 
 async def read_plug(alias, cfg, dev):
     try:
@@ -117,3 +126,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+# monkey-patch al final - no hacer nada, el fix va en get_cloud_devices
