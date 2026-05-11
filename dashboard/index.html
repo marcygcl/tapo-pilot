@@ -216,25 +216,25 @@ async function main(){
   // Uptime 24/7 — porcentaje de lecturas con is_on=1
   Object.keys(DEV).forEach(a=>{
     const rows=_allRows.filter(r=>r.alias===a);
-    const on=rows.filter(r=>r.is_on).length;
+    const on=rows.filter(r=>+r.is_on).length;
     _uptime[a]=rows.length?Math.round(on/rows.length*100):null;
   });
 
   // Banderas: días sin ninguna lectura ON (24/7, L-V)
-  const weekRows=_allRows.filter(r=>week.includes(r.timestamp.slice(0,10)));
+  const weekRows=_allRows.filter(r=>week.includes(new Date(r.timestamp).toLocaleDateString('en-CA',{timeZone:'America/Bogota'})));
   Object.keys(DEV).forEach(a=>{
-    const wdays=new Set(weekRows.filter(r=>r.alias===a).map(r=>r.timestamp.slice(0,10)));
-    const won=new Set(weekRows.filter(r=>r.alias===a&&r.is_on).map(r=>r.timestamp.slice(0,10)));
+    const wdays=new Set(weekRows.filter(r=>r.alias===a).map(r=>new Date(r.timestamp).toLocaleDateString('en-CA',{timeZone:'America/Bogota'})));
+    const won=new Set(weekRows.filter(r=>r.alias===a&&r.is_on).map(r=>new Date(r.timestamp).toLocaleDateString('en-CA',{timeZone:'America/Bogota'})));
     _dOff[a]=wdays.size?[...wdays].filter(d=>!won.has(d)).length:null;
   });
 
   const schoolMaxOff=sid=>SCHOOLS[sid].plugs.map(a=>_dOff[a]).filter(v=>v!==null).reduce((mx,v)=>Math.max(mx,v),-1);
-  const active=Object.values(_latest).filter(r=>r.is_on).length;
+  const active=Object.values(_latest).filter(r=>+r.is_on).length;
   const total=Object.keys(DEV).length;
   const ups=Object.values(_uptime).filter(v=>v!==null);
   const avgUp=ups.length?Math.round(ups.reduce((a,b)=>a+b,0)/ups.length):0;
   const flags=Object.values(_dOff).filter(v=>v!==null&&v>CFG.pilot.flag_threshold_days).length;
-  const wh=Object.values(_latest).reduce((s,r)=>s+(r.today_wh||0),0)|0;
+  const wh=Object.values(_latest).reduce((s,r)=>s+(+r.today_wh||0),0)|0;
   const lastTs=_allRows.length?_allRows[_allRows.length-1].timestamp.slice(0,16).replace("T"," "):"—";
 
   document.getElementById("subtitle").textContent=`${total} plugs · monitoreo 24/7 · sync cada 5 min`;
@@ -291,7 +291,7 @@ async function main(){
     });
   }
 
-  const dailyWh=frames.map(rows=>{const by={};rows.forEach(r=>{if(r.alias)by[r.alias]=r;});return+Object.values(by).reduce((s,r)=>s+(r.today_wh||0),0);});
+  const dailyWh=frames.map(rows=>{const by={};rows.forEach(r=>{if(r.alias)by[r.alias]=r;});return+Object.values(by).reduce((s,r)=>s+(+r.today_wh||0),0);});
   const dark=matchMedia("(prefers-color-scheme:dark)").matches;
   const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
   new Chart(document.getElementById("trendChart"),{type:"bar",
@@ -368,7 +368,7 @@ function renderTimeline(alias){
     const lbl=new Date(date+"T12:00").toLocaleDateString("es",{weekday:"short",day:"numeric"});
     const barsHtml=hours.map(h=>{
       const hr=dayRows.filter(r=>new Date(r.timestamp).getHours()===h);
-      const avg=hr.length?hr.reduce((s,r)=>s+(+r.watts||0),0)/hr.length:undefined;
+      const avg=hr.length?hr.reduce((s,r)=>s+(++r.watts||0),0)/hr.length:undefined;
       return `<div class="tl-cell" style="background:${hr.length?wColor(avg):"#e8e6df"}" title="${hr.length?h+":00 · "+avg.toFixed(1)+"W":h+":00 · sin datos"}"></div>`;
     }).join("");
     const row=document.createElement("div");
