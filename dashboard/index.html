@@ -234,7 +234,7 @@ async function main(){
   const ups=Object.values(_uptime).filter(v=>v!==null);
   const avgUp=ups.length?Math.round(ups.reduce((a,b)=>a+b,0)/ups.length):0;
   const flags=Object.values(_dOff).filter(v=>v!==null&&v>CFG.pilot.flag_threshold_days).length;
-  const wh=Object.values(_latest).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(0);
+  const wh=Object.values(_latest).reduce((s,r)=>s+(r.today_wh||0),0)|0;
   const lastTs=_allRows.length?_allRows[_allRows.length-1].timestamp.slice(0,16).replace("T"," "):"—";
 
   document.getElementById("subtitle").textContent=`${total} plugs · monitoreo 24/7 · sync cada 5 min`;
@@ -291,7 +291,7 @@ async function main(){
     });
   }
 
-  const dailyWh=frames.map(rows=>{const by={};rows.forEach(r=>{if(r.alias)by[r.alias]=r;});return+Object.values(by).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(1);});
+  const dailyWh=frames.map(rows=>{const by={};rows.forEach(r=>{if(r.alias)by[r.alias]=r;});return+Object.values(by).reduce((s,r)=>s+(r.today_wh||0),0);});
   const dark=matchMedia("(prefers-color-scheme:dark)").matches;
   const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
   new Chart(document.getElementById("trendChart"),{type:"bar",
@@ -368,7 +368,7 @@ function renderTimeline(alias){
     const lbl=new Date(date+"T12:00").toLocaleDateString("es",{weekday:"short",day:"numeric"});
     const barsHtml=hours.map(h=>{
       const hr=dayRows.filter(r=>new Date(r.timestamp).getHours()===h);
-      const avg=hr.length?hr.reduce((s,r)=>s+(r.watts||0),0)/hr.length:undefined;
+      const avg=hr.length?hr.reduce((s,r)=>s+(+r.watts||0),0)/hr.length:undefined;
       return `<div class="tl-cell" style="background:${hr.length?wColor(avg):"#e8e6df"}" title="${hr.length?h+":00 · "+avg.toFixed(1)+"W":h+":00 · sin datos"}"></div>`;
     }).join("");
     const row=document.createElement("div");
