@@ -16,8 +16,8 @@
       "lng": -74.0490,
       "nudge_type": "tbd",
       "plugs": [
-        {"tapo_alias": "air purifier", "aula": "Aula 101", "floor": 1},
-        {"tapo_alias": "umy eco",      "aula": "Aula 102", "floor": 1}
+        {"tapo_alias": "lamp", "aula": "Aula 101", "floor": 1},
+        {"tapo_alias": "tv",   "aula": "Aula 102", "floor": 1}
       ]
     },
     {
@@ -28,8 +28,8 @@
       "lng": -74.0630,
       "nudge_type": "tbd",
       "plugs": [
-        {"tapo_alias": "lamp",         "aula": "Aula 103", "floor": 1},
-        {"tapo_alias": "coffee maker", "aula": "Aula 104", "floor": 1}
+        {"tapo_alias": "air",    "aula": "Aula 103", "floor": 1},
+        {"tapo_alias": "coffee", "aula": "Aula 104", "floor": 1}
       ]
     },
     {
@@ -40,8 +40,8 @@
       "lng": -74.0820,
       "nudge_type": "tbd",
       "plugs": [
-        {"tapo_alias": "fridge", "aula": "Aula 201", "floor": 2},
-        {"tapo_alias": "tv",     "aula": "Aula 202", "floor": 2}
+        {"tapo_alias": "eco",    "aula": "Aula 201", "floor": 2},
+        {"tapo_alias": "fridge", "aula": "Aula 202", "floor": 2}
       ]
     }
   ]
