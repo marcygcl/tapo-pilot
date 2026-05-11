@@ -208,10 +208,10 @@ async function main(){
   _weekDays=week;
   const frames=await Promise.all(days7.map(fetchCSV));
   _allRows=frames.flat();
-  const todayRows=frames[frames.length-1].length ? frames[frames.length-1] : frames[frames.length-2];
+  const todayRows=_allRows;
 
   // Latest reading per alias — sin filtro horario
-  _allRows.forEach(r=>{_latest[r.alias]=r;});
+  
 
   // Uptime 24/7 — porcentaje de lecturas con is_on=1
   Object.keys(DEV).forEach(a=>{
