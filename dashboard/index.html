@@ -178,8 +178,8 @@ function switchTab(id,el){
   if(id==="mapa"&&!_mapInit){initMap();_mapInit=true;}
 }
 
-const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toISOString().slice(0,10);});
-const getWeek=()=>{const t=new Date(),m=new Date(t);m.setDate(t.getDate()-t.getDay()+1);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});};
+const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toLocaleDateString('en-CA',{timeZone:'America/Bogota'});});
+const getWeek=()=>{const t=new Date(),m=new Date(t);m.setDate(t.getDate()-t.getDay()+1);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toLocaleDateString('en-CA',{timeZone:'America/Bogota'});});};
 
 // Sin filtro de horario escolar — todo 24/7
 const wColor=w=>{if(w===undefined||w===null)return"#d3d1c7";if(w<=2)return"#e24b4a";if(w<=10)return"#ef9f27";if(w<=28)return"#639922";return"#3b6d11";};
