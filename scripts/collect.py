@@ -23,13 +23,10 @@ async def read_plug(alias, cfg):
         from tapo import ApiClient
         client = ApiClient(TAPO_EMAIL, TAPO_PASSWORD)
         device = await client.p115(cfg["ip"])
-        info  = await device.get_device_info()
-        usage = await device.get_energy_usage()
-        # compatibilidad con distintas versiones de tapo
-        watts = 0.0
-        today_wh = 0.0
-        month_wh = 0.0
-        runtime = 0
+        power    = await device.get_current_power()
+        watts    = round(power.current_power, 1)
+        info     = await device.get_device_info_json()
+        usage    = await device.get_energy_usage()
         today_wh = round(usage.today_energy, 1)
         month_wh = round(usage.month_energy, 1)
         runtime  = usage.today_runtime
@@ -38,7 +35,7 @@ async def read_plug(alias, cfg):
             "alias":             alias,
             "aula":              cfg["aula"],
             "colegio":           cfg["colegio"],
-            "is_on":             int(info.device_on),
+            "is_on":             int(info["device_on"]),
             "watts":             watts,
             "intensity":         classify_intensity(watts),
             "today_wh":          today_wh,
