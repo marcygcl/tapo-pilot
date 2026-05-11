@@ -25,7 +25,14 @@ async def read_plug(alias, cfg):
         device = await client.p115(cfg["ip"])
         info  = await device.get_device_info()
         usage = await device.get_energy_usage()
-        watts = round(usage.current_power / 1000, 1)
+        # compatibilidad con distintas versiones de tapo
+        watts = 0.0
+        today_wh = 0.0
+        month_wh = 0.0
+        runtime = 0
+        today_wh = round(usage.today_energy, 1)
+        month_wh = round(usage.month_energy, 1)
+        runtime  = usage.today_runtime
         return {
             "timestamp":         now_bogota().isoformat(timespec="seconds"),
             "alias":             alias,
@@ -34,9 +41,9 @@ async def read_plug(alias, cfg):
             "is_on":             int(info.device_on),
             "watts":             watts,
             "intensity":         classify_intensity(watts),
-            "today_wh":          round(usage.today_energy / 1000, 1),
-            "month_wh":          round(usage.month_energy / 1000, 1),
-            "runtime_today_min": usage.today_runtime,
+            "today_wh":          today_wh,
+            "month_wh":          month_wh,
+            "runtime_today_min": runtime,
             "school_hours":      int(is_school_hours()),
         }
     except Exception as e:

@@ -11,3 +11,9 @@ timestamp,alias,aula,colegio,ip,is_on,watts,intensity,today_wh,month_wh,runtime_
 2026-05-10T17:40:29-05:00,coffee,Aula 104,Colombia School 4,192.168.0.119,1,1.1,off,0.0,0.0,52,0
 2026-05-10T17:40:29-05:00,eco,Aula 201,Colombia School 5,192.168.0.227,1,9.0,low,0.1,0.2,1059,0
 2026-05-10T17:40:29-05:00,fridge,Aula 202,Colombia School 6,192.168.0.237,1,81.3,unknown,0.0,0.0,50,0
+2026-05-10T22:39:36-05:00,lamp,Aula 101,Colombia School 1,1,0.0,off,4,4,351,0
+2026-05-10T22:39:36-05:00,tv,Aula 102,Colombia School 1,1,0.0,off,6,6,345,0
+2026-05-10T22:39:36-05:00,air,Aula 103,Colombia School 2,1,0.0,off,470,1059,1359,0
+2026-05-10T22:39:36-05:00,coffee,Aula 104,Colombia School 2,1,0.0,off,8,8,351,0
+2026-05-10T22:39:36-05:00,eco,Aula 201,Colombia School 3,1,0.0,off,87,195,1358,0
+2026-05-10T22:39:36-05:00,fridge,Aula 202,Colombia School 3,1,0.0,off,318,318,349,0
