@@ -21,7 +21,11 @@ FLAG_THRESHOLD_DAYS = int(os.getenv("FLAG_THRESHOLD_DAYS", PILOT["flag_threshold
 DEVICES: dict[str, dict] = {}
 for school in CONFIG["schools"]:
     for plug in school["plugs"]:
-        DEVICES[plug["tapo_alias"]] = {"aula": plug["aula"], "colegio": school["name"]}
+        DEVICES[plug["tapo_alias"]] = {
+            "aula":    plug["aula"],
+            "colegio": school["name"],
+            "ip":      plug["ip"],
+        }
 
 SQAIR_INTENSITY = {"off":(0,2),"low":(3,10),"medium":(11,28),"high":(29,42)}
 

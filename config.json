@@ -16,8 +16,8 @@
       "lng": -74.0490,
       "nudge_type": "tbd",
       "plugs": [
-        {"tapo_alias": "lamp", "aula": "Aula 101", "floor": 1},
-        {"tapo_alias": "tv",   "aula": "Aula 102", "floor": 1}
+        {"tapo_alias": "lamp",   "aula": "Aula 101", "floor": 1, "ip": "192.168.0.241"},
+        {"tapo_alias": "tv",     "aula": "Aula 102", "floor": 1, "ip": "192.168.0.232"}
       ]
     },
     {
@@ -28,8 +28,8 @@
       "lng": -74.0630,
       "nudge_type": "tbd",
       "plugs": [
-        {"tapo_alias": "air",    "aula": "Aula 103", "floor": 1},
-        {"tapo_alias": "coffee", "aula": "Aula 104", "floor": 1}
+        {"tapo_alias": "air",    "aula": "Aula 103", "floor": 1, "ip": "192.168.0.144"},
+        {"tapo_alias": "coffee", "aula": "Aula 104", "floor": 1, "ip": "192.168.0.119"}
       ]
     },
     {
@@ -40,8 +40,8 @@
       "lng": -74.0820,
       "nudge_type": "tbd",
       "plugs": [
-        {"tapo_alias": "eco",    "aula": "Aula 201", "floor": 2},
-        {"tapo_alias": "fridge", "aula": "Aula 202", "floor": 2}
+        {"tapo_alias": "eco",    "aula": "Aula 201", "floor": 2, "ip": "192.168.0.227"},
+        {"tapo_alias": "fridge", "aula": "Aula 202", "floor": 2, "ip": "192.168.0.237"}
       ]
     }
   ]
