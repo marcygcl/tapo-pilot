@@ -29,6 +29,7 @@ jobs:
         run: uv run python scripts/collect.py --once
 
       - name: Send alerts
+        continue-on-error: true
         env:
           TWILIO_SID:      ${{ secrets.TWILIO_SID }}
           TWILIO_TOKEN:    ${{ secrets.TWILIO_TOKEN }}
