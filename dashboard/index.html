@@ -3,291 +3,490 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Plug Pilot — Comparativo</title>
+  <title>Smart Plug Pilot — Emporia</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
-    :root{--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);--text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;--green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;--amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;--red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;--blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;--purple:#534ab7;--purple-bg:#eeedfe;--r:10px;}
-    @media(prefers-color-scheme:dark){:root{--bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);--text:#eeebe3;--muted:#888780;--hint:#5f5e5a;--green:#97c459;--green-bg:#27500a;--green-mid:#639922;--amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;--red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;--blue:#85b7eb;--blue-bg:#0c447c;--blue-mid:#378add;--purple:#afa9ec;--purple-bg:#3c3489;}}
+    :root{--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);--text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;--green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;--amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;--orange:#9a4a06;--orange-bg:#fbe6d4;--orange-mid:#e8830c;--red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;--blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;--purple:#534ab7;--purple-bg:#eeedfe;--gray:#444;--gray-bg:#e7e6e1;--gray-mid:#555;--r:10px;}
+    @media(prefers-color-scheme:dark){:root{--bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);--text:#eeebe3;--muted:#888780;--hint:#5f5e5a;--green:#97c459;--green-bg:#27500a;--green-mid:#639922;--amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;--orange:#f0a85f;--orange-bg:#5c2f08;--orange-mid:#e8830c;--red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;--blue:#85b7eb;--blue-bg:#0c447c;--blue-mid:#378add;--purple:#afa9ec;--purple-bg:#3c3489;--gray:#bbb;--gray-bg:#2e2e2c;--gray-mid:#888;}}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:.5px solid var(--border);background:var(--surface);flex-shrink:0;}
     .topbar h1{font-size:15px;font-weight:500;}.topbar p{font-size:11px;color:var(--muted);margin-top:1px;}
     .topbar-right{display:flex;align-items:center;gap:8px;}
     .pill{font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;white-space:nowrap;}
-    .pill-green{background:var(--green-bg);color:var(--green);}.pill-blue{background:var(--blue-bg);color:var(--blue);}
+    .pill-green{background:var(--green-bg);color:var(--green);}.pill-red{background:var(--red-bg);color:var(--red);}.pill-blue{background:var(--blue-bg);color:var(--blue);}
     .sync{font-size:11px;color:var(--hint);}
-    .tabs{display:flex;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
-    .tab{padding:10px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;display:flex;align-items:center;gap:7px;}
+    .tabs{display:flex;border-bottom:.5px solid var(--border);background:var(--surface);flex-shrink:0;}
+    .tab{padding:10px 24px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;}
     .tab:hover{color:var(--text);}.tab.active{color:var(--text);border-bottom-color:var(--text);}
-    .tab .dot{width:8px;height:8px;border-radius:50%;}
-    .panel{display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:20px;}.panel.active{display:flex;}
-    .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+    .panel{display:none;flex:1;overflow:hidden;}.panel.active{display:flex;}
+
+    #tab-resumen{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:20px;}
     .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
     .kpi{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px;}
     .kpi-label{font-size:11px;color:var(--muted);margin-bottom:4px;}
     .kpi-value{font-size:26px;font-weight:500;}
     .kpi-sub{font-size:11px;color:var(--hint);margin-top:3px;}
-    .card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px;}
+    .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+    .school-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .school-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;cursor:pointer;transition:border-color .15s;}
+    .school-card:hover{border-color:var(--muted);}
+    .school-card.sel{border-color:var(--blue);}
+    .school-card.flag-alta{border-left:3px solid var(--red-mid);}.school-card.flag-media{border-left:3px solid var(--amber-mid);}.school-card.flag-baja{border-left:3px solid var(--amber-mid);}
+    .school-sem{width:11px;height:11px;border-radius:50%;position:absolute;top:14px;right:14px;}
+    .school-name{font-size:13px;font-weight:500;margin-bottom:2px;}
+    .school-meta{font-size:11px;color:var(--muted);margin-bottom:10px;}
+    .school-stats{display:flex;gap:14px;}
+    .school-stat{font-size:11px;color:var(--muted);}.school-stat b{color:var(--text);font-weight:500;}
+    .school-flags{margin-top:8px;font-size:14px;letter-spacing:2px;min-height:18px;}
+
+    .flag-list{display:flex;flex-direction:column;gap:8px;}
+    .flag-card{background:var(--surface);border:.5px solid var(--border);border-left:3px solid;border-radius:var(--r);padding:11px 14px;display:flex;align-items:center;gap:12px;}
+    .flag-card.alta{border-left-color:var(--red-mid);}.flag-card.media{border-left-color:var(--amber-mid);}.flag-card.baja{border-left-color:var(--amber-mid);}
+    .flag-emoji{font-size:18px;flex-shrink:0;}
+    .flag-body{flex:1;min-width:0;}
+    .flag-title{font-size:13px;font-weight:500;}
+    .flag-loc{font-size:11px;color:var(--muted);margin-top:1px;}
+    .flag-meta{display:flex;gap:16px;flex-shrink:0;text-align:right;}
+    .flag-metric{font-size:11px;color:var(--muted);}.flag-metric b{display:block;color:var(--text);font-weight:500;font-size:12px;}
+    .sev-badge{font-size:10px;font-weight:600;padding:2px 9px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;align-self:center;}
+    .sev-alta{background:var(--red-bg);color:var(--red);}.sev-media{background:var(--amber-bg);color:var(--amber);}.sev-baja{background:var(--amber-bg);color:var(--amber);}
+
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
-    table{width:100%;border-collapse:collapse;font-size:13px;}
-    th{text-align:left;font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:.5px solid var(--border);}
-    td{padding:9px 10px;border-bottom:.5px solid var(--border);}
-    tr:last-child td{border-bottom:none;}
-    .num{text-align:right;font-variant-numeric:tabular-nums;}
-    .badge{font-size:11px;font-weight:500;padding:2px 9px;border-radius:12px;white-space:nowrap;}
-    .badge-on{background:var(--green-bg);color:var(--green);}
-    .badge-off{background:var(--red-bg);color:var(--red);}
-    .badge-na{background:var(--bg);color:var(--muted);}
-    .uptime-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-    .uptime-label{font-size:11px;color:var(--muted);width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .uptime-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;}
-    .uptime-fill{height:100%;border-radius:4px;}
-    .uptime-pct{font-size:11px;font-weight:500;width:36px;text-align:right;flex-shrink:0;}
-    .empty{padding:40px;text-align:center;color:var(--hint);font-size:13px;}
-    .legend-pill{display:inline-block;font-size:10px;color:var(--muted);margin-left:8px;}
-    @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.two-col{grid-template-columns:1fr;}}
+    .chart-box{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px;}
+    .aula-detail{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px;}
+    .aula-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);border:.5px solid var(--border);background:var(--bg);margin-bottom:6px;cursor:pointer;}
+    .aula-row:hover{border-color:var(--muted);}.aula-row.sel{border-color:var(--blue);background:var(--blue-bg);}
+    .aula-sem{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+    .aula-info{flex:1;min-width:0;}
+    .aula-name{font-size:12px;font-weight:500;}
+    .aula-sub{font-size:10px;color:var(--muted);}
+    .aula-w{font-size:12px;font-weight:500;flex-shrink:0;}
+    .aula-flags{font-size:13px;letter-spacing:1px;flex-shrink:0;}
+
+    .tl-wrap{margin-top:12px;}
+    .tl-title{font-size:11px;font-weight:500;margin-bottom:8px;}
+    .tl-grid{display:flex;flex-direction:column;gap:4px;}
+    .tl-row{display:flex;align-items:center;gap:5px;}
+    .tl-lbl{font-size:10px;color:var(--muted);width:52px;flex-shrink:0;text-align:right;}
+    .tl-bars{display:flex;gap:1px;flex:1;}
+    .tl-cell{flex:1;height:13px;border-radius:2px;}
+    .leg{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:8px;}
+    .leg-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle;}
+
+    /* MAPA */
+    #tab-mapa{flex-direction:row;}
+    .map-wrap{flex:1;position:relative;}#map{width:100%;height:100%;}
+    .map-legend{position:absolute;bottom:20px;left:12px;z-index:1000;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:11px;}
+    .map-legend b{display:block;margin-bottom:5px;}
+    .leg-row{display:flex;align-items:center;gap:6px;margin-top:4px;}
+    .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+    .map-side{width:340px;border-left:.5px solid var(--border);background:var(--surface);overflow-y:auto;display:flex;flex-direction:column;}
+    .map-sec{padding:12px 14px;border-bottom:.5px solid var(--border);}
+    .map-sec-title{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
+    @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}}
   </style>
 </head>
 <body>
 <div class="topbar">
-  <div><h1 id="pilot-title">Smart Plug Pilot — Comparativo</h1><p id="subtitle">Cargando datos...</p></div>
+  <div><h1 id="pilot-title">Smart Plug Pilot — Emporia</h1><p id="subtitle">Cargando datos...</p></div>
   <div class="topbar-right">
     <span class="pill pill-blue" id="active-badge">—</span>
+    <span class="pill pill-green" id="flag-badge">—</span>
     <span class="sync" id="last-sync">—</span>
   </div>
 </div>
-<div class="tabs" id="tabs"></div>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
+  <div class="tab" onclick="switchTab('mapa',this)">Mapa</div>
+</div>
 
-<!-- Panel comparativo -->
-<div class="panel active" id="tab-compare">
-  <div class="kpi-grid" id="cmpKpis"></div>
-  <div class="two-col">
-    <div class="card">
-      <div class="section-title">Consumo de hoy por tecnología (Wh)</div>
-      <div style="position:relative;height:200px;"><canvas id="cmpWhChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="section-title">Watts en tiempo real por tecnología</div>
-      <div style="position:relative;height:200px;"><canvas id="cmpWChart"></canvas></div>
-    </div>
+<div class="panel active" id="tab-resumen">
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div>
+    <div class="section-title">Estado por colegio — click para ver aulas</div>
+    <div class="school-cards" id="schoolCards"></div>
   </div>
-  <div class="card">
-    <div class="section-title">Todos los dispositivos</div>
-    <table><thead><tr>
-      <th>Tecnología</th><th>Dispositivo</th><th>Estado</th>
-      <th class="num">Watts</th><th class="num">Wh hoy</th><th class="num">Uptime 7d</th>
-    </tr></thead><tbody id="cmpTable"></tbody></table>
+  <div id="detailSection" style="display:none">
+    <div class="section-title" id="detailTitle">Detalle de aulas</div>
+    <div class="aula-detail" id="aulaDetail"></div>
+  </div>
+  <div id="flagSection" style="display:none">
+    <div class="section-title">Flags activos</div>
+    <div class="flag-list" id="flagList"></div>
+  </div>
+  <div class="two-col">
+    <div class="chart-box">
+      <div class="section-title" style="margin-bottom:12px;">Consumo diario — últimos 7 días (Wh)</div>
+      <div style="position:relative;height:150px;"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="section-title" style="margin-bottom:12px;">Tipos de flag — referencia</div>
+      <div id="flagLegend" style="font-size:12px;line-height:1.9;"></div>
+    </div>
   </div>
 </div>
 
-<!-- Paneles por collector (generados) -->
-<div class="panel" id="tab-tapo"></div>
-<div class="panel" id="tab-emporia"></div>
-<div class="panel" id="tab-shelly"></div>
+<div class="panel" id="tab-mapa">
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-legend">
+      <b>Semáforo por colegio</b>
+      <div class="leg-row"><span class="dot" style="background:#639922"></span>Sin flags</div>
+      <div class="leg-row"><span class="dot" style="background:#ef9f27"></span>Flag media/baja</div>
+      <div class="leg-row"><span class="dot" style="background:#e24b4a"></span>Flag alta — visita</div>
+      <div class="leg-row"><span class="dot" style="background:#888780"></span>Sin datos</div>
+    </div>
+  </div>
+  <div class="map-side">
+    <div class="map-sec">
+      <div class="map-sec-title">Aulas — click para detalle</div>
+      <div id="mapAulaList"></div>
+    </div>
+    <div class="map-sec" id="mapTlSection" style="display:none">
+      <div class="tl-title" id="mapTlTitle">Intensidad por hora</div>
+      <div class="tl-grid" id="mapTlGrid"></div>
+      <div class="leg">
+        <span><span class="leg-dot" style="background:#3b6d11"></span>Alta</span>
+        <span><span class="leg-dot" style="background:#639922"></span>Media</span>
+        <span><span class="leg-dot" style="background:#ef9f27"></span>Baja</span>
+        <span><span class="leg-dot" style="background:#e8830c"></span>Fuera de rango</span>
+        <span><span class="leg-dot" style="background:#e24b4a"></span>Apagado/0W</span>
+        <span><span class="leg-dot" style="background:#d3d1c7"></span>Sin datos</span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 const REPO="https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
 const TZ="America/Bogota";
-// Cada tecnología: clave de subcarpeta en energy_logs/ y color de marca.
-const COLLECTORS=[
-  {key:"tapo",    label:"Tapo",    color:"#378add"},
-  {key:"emporia", label:"Emporia", color:"#639922"},
-  {key:"shelly",  label:"Shelly",  color:"#ba7517"},
-];
-let CFG=null;
-const DATA={}; // key -> {rows, latest, uptime, dailyWh, devices}
+
+// ---- Umbrales del motor de flags (ajustables) ----
+const ZERO_W=3;       // <= este wattaje se considera "sin consumo" (filtro apagado/desconectado)
+const SQAIR_MIN=6;    // rango operativo válido del filtro Sqair
+const SQAIR_MAX=38;
+const LOW_MAX=15;     // tope de la banda "baja"; por encima ya es media/alta
+const NO_DATA_H=2;    // horas sin datos -> flag de conectividad
+
+// Bandas de intensidad por watts (para el timeline horario).
+function intensityColor(w){
+  if(w===undefined||w===null)return"#d3d1c7";      // sin datos
+  if(w<=ZERO_W)return"#e24b4a";                     // apagado / 0W
+  if(w<SQAIR_MIN||w>SQAIR_MAX)return"#e8830c";      // fuera de rango Sqair
+  if(w<=LOW_MAX)return"#ef9f27";                    // baja
+  if(w<=28)return"#639922";                         // media
+  return"#3b6d11";                                  // alta
+}
+
+const FLAG_DEFS={
+  off:     {emoji:"🔴",label:"Apagado más de 1 día escolar",sev:"alta",color:"#e24b4a"},
+  no_watts:{emoji:"🟡",label:"ON pero sin consumo (filtro desconectado)",sev:"media",color:"#ef9f27"},
+  range:   {emoji:"🟠",label:"Watts fuera del rango Sqair 6–38W (dispositivo incorrecto)",sev:"media",color:"#e8830c"},
+  no_data: {emoji:"⚫",label:"Sin datos más de 2h (pérdida de conectividad)",sev:"alta",color:"#555"},
+  low_only:{emoji:"🟡",label:"Solo intensidad baja (debería estar en media/alta)",sev:"baja",color:"#d6b400"},
+};
+const SEV_RANK={alta:3,media:2,baja:1};
+
+let CFG=null,SCHOOLS={},DEVICES={};            // DEVICES[alias]={aula,schoolId}
+let _allRows=[],_byAlias={},_flags={},_latest={},_weekDays=[],_dailyWh=[];
+let _map,_mapInit=false,_markers={},_selSchool=null,_selAula=null;
+const NOW=new Date();
 
 const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toLocaleDateString('en-CA',{timeZone:TZ});});
-const dayKey=ts=>new Date(ts).toLocaleDateString('en-CA',{timeZone:TZ});
+const getWeek=()=>{const t=new Date(),m=new Date(t);m.setDate(t.getDate()-t.getDay()+1);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toLocaleDateString('en-CA',{timeZone:TZ});});};
+const dayKey=d=>new Date(d).toLocaleDateString('en-CA',{timeZone:TZ});
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 
-const fetchCSV=(coll,date)=>new Promise(res=>{
-  Papa.parse(`${REPO}/energy_logs/${coll}/${date}.csv`,{download:true,header:true,
+function humanDur(ms){
+  if(ms==null)return"—";
+  const m=Math.floor(ms/60000); if(m<60)return m+" min";
+  const h=Math.floor(m/60),rm=m%60; if(h<24)return h+"h"+(rm?" "+rm+"m":"");
+  const d=Math.floor(h/24),rh=h%24; return d+"d"+(rh?" "+rh+"h":"");
+}
+const fmtTime=d=>d?new Date(d).toLocaleString('es',{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):"—";
+// Días escolares (lun–vie) abarcados entre dos fechas, inclusive.
+function schoolDaysSpan(a,b){
+  if(!a)return 0;
+  const s=new Date(a);s.setHours(0,0,0,0);const e=new Date(b);e.setHours(0,0,0,0);
+  let n=0;for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){const wd=d.getDay();if(wd>=1&&wd<=5)n++;}
+  return n;
+}
+// Racha contigua al final de la serie que cumple pred.
+function tailStreak(rows,pred){let i=rows.length-1;const out=[];while(i>=0&&pred(rows[i])){out.unshift(rows[i]);i--;}return out;}
+
+const fetchCSV=date=>new Promise(res=>{
+  Papa.parse(`${REPO}/energy_logs/emporia/${date}.csv`,{download:true,header:true,
     complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp&&typeof x.timestamp==="string")),
     error:()=>res([])});
 });
 
-function buildTabs(){
-  const tabs=document.getElementById("tabs");
-  tabs.innerHTML=`<div class="tab active" data-tab="compare" onclick="switchTab('compare',this)">Comparativo</div>`+
-    COLLECTORS.map(c=>`<div class="tab" data-tab="${c.key}" onclick="switchTab('${c.key}',this)"><span class="dot" style="background:${c.color}"></span>${c.label}</div>`).join("");
+// ---- Motor de flags por dispositivo ----
+function computeFlags(rows){
+  const flags=[];
+  if(!rows.length){flags.push({type:"no_data",start:null,durMs:null});return flags;}
+  const last=rows[rows.length-1];
+  const gap=NOW-last.t;
+
+  // ⚫ Sin datos > 2h
+  if(gap>NO_DATA_H*3600e3) flags.push({type:"no_data",start:last.t,durMs:gap});
+
+  // 🔴 Apagado > 1 día escolar (racha OFF al final que abarca >1 día lun–vie)
+  const offStreak=tailStreak(rows,r=>r.is_on===0);
+  if(offStreak.length && schoolDaysSpan(offStreak[0].t,last.t)>1)
+    flags.push({type:"off",start:offStreak[0].t,durMs:NOW-offStreak[0].t});
+
+  // 🟡 ON pero sin consumo
+  const noW=tailStreak(rows,r=>r.is_on===1 && r.watts<=ZERO_W);
+  if(noW.length) flags.push({type:"no_watts",start:noW[0].t,durMs:NOW-noW[0].t});
+
+  // 🟠 Watts fuera de rango Sqair (con consumo pero fuera de 6–38W)
+  const oor=tailStreak(rows,r=>r.watts>ZERO_W && (r.watts<SQAIR_MIN||r.watts>SQAIR_MAX));
+  if(oor.length) flags.push({type:"range",start:oor[0].t,durMs:NOW-oor[0].t});
+
+  // 🟡 Solo intensidad baja en horario escolar (encendido, en rango, nunca supera baja)
+  const lookback=NOW-2*24*3600e3;
+  const schoolOn=rows.filter(r=>r.t>=lookback && r.school_hours===1 && r.is_on===1 && r.watts>ZERO_W && r.watts<=SQAIR_MAX);
+  if(schoolOn.length>=3 && schoolOn.every(r=>r.watts<=LOW_MAX))
+    flags.push({type:"low_only",start:schoolOn[0].t,durMs:NOW-schoolOn[0].t});
+
+  return flags;
 }
-function switchTab(id,el){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
-  el.classList.add("active");
-  document.getElementById("tab-"+id).classList.add("active");
+const worstSev=flags=>flags.reduce((mx,f)=>Math.max(mx,SEV_RANK[FLAG_DEFS[f.type].sev]),0);
+const semColor=sev=>sev>=3?"#e24b4a":sev>=1?"#ef9f27":"#639922";
+function schoolWorst(sid){
+  const aulas=SCHOOLS[sid].aulas;
+  return aulas.reduce((mx,a)=>Math.max(mx,worstSev(_flags[a]||[])),0);
 }
 
-// Etiqueta legible de un dispositivo (aula del config si existe, si no el alias).
-function deviceLabel(coll,alias){
-  const d=(DATA[coll].devices||{})[alias];
-  return d&&d.aula?d.aula:alias;
-}
+async function main(){
+  CFG=await (await fetch(`${REPO}/config.json`)).json();
+  if(CFG.pilot&&CFG.pilot.name)document.getElementById("pilot-title").textContent=CFG.pilot.name+" — Emporia";
 
-async function loadCollector(coll){
-  const days=getDays(7);
-  const frames=await Promise.all(days.map(d=>fetchCSV(coll,d)));
-  const rows=frames.flat().map(r=>({...r,is_on:r.is_on===""?null:parseInt(r.is_on),watts:num(r.watts),today_wh:num(r.today_wh)}));
-  const latest={},uptime={};
-  rows.forEach(r=>{latest[r.alias]=r;});
-  const aliases=[...new Set(rows.map(r=>r.alias))];
-  aliases.forEach(a=>{
-    const ar=rows.filter(r=>r.alias===a&&r.is_on!==null);
-    const on=ar.filter(r=>r.is_on===1).length;
-    uptime[a]=ar.length?Math.round(on/ar.length*100):null;
+  for(const s of (CFG.schools||[]))
+    SCHOOLS[s.id]={name:s.name,lat:s.lat,lng:s.lng,aulas:[]};
+  for(const d of ((CFG.emporia||{}).devices||[])){
+    DEVICES[d.alias]={aula:d.aula||d.alias,schoolId:d.school_id};
+    if(d.school_id&&SCHOOLS[d.school_id])SCHOOLS[d.school_id].aulas.push(d.alias);
+  }
+
+  const days7=getDays(7);_weekDays=getWeek();
+  const frames=await Promise.all(days7.map(fetchCSV));
+  _allRows=frames.flat().map(r=>({
+    alias:r.alias,t:new Date(r.timestamp),
+    is_on:r.is_on===""||r.is_on==null?null:parseInt(r.is_on),
+    watts:num(r.watts),today_wh:num(r.today_wh),
+    school_hours:parseInt(r.school_hours)||0,
+  })).sort((a,b)=>a.t-b.t);
+
+  Object.keys(DEVICES).forEach(a=>{
+    _byAlias[a]=_allRows.filter(r=>r.alias===a);
+    _flags[a]=computeFlags(_byAlias[a]);
+    _latest[a]=_byAlias[a].length?_byAlias[a][_byAlias[a].length-1]:null;
   });
-  // Wh consumido por día = max(today_wh) observado ese día (es acumulado).
-  const dailyWh=frames.map(fr=>{
-    const byA={};
-    fr.forEach(r=>{const w=num(r.today_wh);if(!(r.alias in byA)||w>byA[r.alias])byA[r.alias]=w;});
+
+  _dailyWh=frames.map(fr=>{
+    const byA={};fr.forEach(r=>{const w=num(r.today_wh);if(!(r.alias in byA)||w>byA[r.alias])byA[r.alias]=w;});
     return +Object.values(byA).reduce((s,w)=>s+w,0).toFixed(1);
   });
-  DATA[coll]={rows,latest,uptime,dailyWh,days,aliases};
+
+  renderKpis();renderSchoolCards();renderFlags();renderTrend();renderFlagLegend();renderMapAulaList();
 }
 
-function devicesFromConfig(){
-  // tapo: alias/aula desde schools[].plugs; emporia: emporia.devices[]
-  const tapo={};
-  (CFG.schools||[]).forEach(s=>(s.plugs||[]).forEach(p=>{tapo[p.tapo_alias]={aula:p.aula,colegio:s.name};}));
-  DATA.tapo.devices=tapo;
-  const emp={};
-  ((CFG.emporia||{}).devices||[]).forEach(d=>{emp[d.alias]={aula:d.aula,gid:d.gid};});
-  DATA.emporia.devices=emp;
-  DATA.shelly.devices={};
+function renderKpis(){
+  const aliases=Object.keys(DEVICES);
+  const active=aliases.filter(a=>_latest[a]&&_latest[a].is_on===1).length;
+  const totalFlags=Object.values(_flags).reduce((s,f)=>s+f.length,0);
+  const highFlags=Object.values(_flags).flat().filter(f=>FLAG_DEFS[f.type].sev==="alta").length;
+  const wh=aliases.reduce((s,a)=>s+(_latest[a]?_latest[a].today_wh:0),0).toFixed(0);
+  const lastTs=_allRows.length?_allRows[_allRows.length-1].t:null;
+
+  document.getElementById("subtitle").textContent=`${aliases.length} aulas Emporia · monitoreo 24/7 · sync cada 5 min`;
+  document.getElementById("active-badge").textContent=`${active}/${aliases.length} activos`;
+  const fb=document.getElementById("flag-badge");
+  fb.textContent=totalFlags?`${totalFlags} flag${totalFlags>1?"s":""}`:"Sin flags";
+  fb.className=`pill ${highFlags?"pill-red":totalFlags?"pill-blue":"pill-green"}`;
+  document.getElementById("last-sync").textContent=lastTs?`Última: ${fmtTime(lastTs)}`:"Sin lecturas";
+
+  document.getElementById("kpiGrid").innerHTML=`
+    <div class="kpi"><div class="kpi-label">Aulas activas ahora</div><div class="kpi-value">${active}<span style="font-size:16px;color:var(--muted)">/${aliases.length}</span></div><div class="kpi-sub">plug encendido</div></div>
+    <div class="kpi"><div class="kpi-label">Flags activos</div><div class="kpi-value" style="color:${totalFlags?"var(--amber-mid)":"var(--green-mid)"}">${totalFlags}</div><div class="kpi-sub">${highFlags} de severidad alta</div></div>
+    <div class="kpi"><div class="kpi-label">Aulas sin novedad</div><div class="kpi-value">${aliases.filter(a=>!(_flags[a]||[]).length).length}</div><div class="kpi-sub">de ${aliases.length} monitoreadas</div></div>
+    <div class="kpi"><div class="kpi-label">Consumo hoy</div><div class="kpi-value">${wh}<span style="font-size:16px;color:var(--muted)"> Wh</span></div><div class="kpi-sub">todas las aulas</div></div>`;
 }
 
-function estadoBadge(is_on){
-  if(is_on===null||is_on===undefined)return `<span class="badge badge-na">N/A</span>`;
-  return is_on===1?`<span class="badge badge-on">ON</span>`:`<span class="badge badge-off">OFF</span>`;
-}
-function upColor(u){return u===null?"#d3d1c7":u>=80?"#639922":u>=50?"#ef9f27":"#e24b4a";}
-
-function renderCompare(){
-  // KPIs: un resumen por tecnología.
-  const kpis=document.getElementById("cmpKpis");
-  kpis.innerHTML=COLLECTORS.map(c=>{
-    const d=DATA[c.key];
-    const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
-    const active=aliases.filter(a=>d.latest[a]&&d.latest[a].is_on===1).length;
-    const wNow=aliases.reduce((s,a)=>s+(d.latest[a]?d.latest[a].watts:0),0);
-    const whToday=d.dailyWh.length?d.dailyWh[d.dailyWh.length-1]:0;
-    const has=aliases.length>0;
-    return `<div class="kpi">
-      <div class="kpi-label"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};margin-right:5px;"></span>${c.label}</div>
-      <div class="kpi-value">${has?active+'<span style="font-size:16px;color:var(--muted)">/'+aliases.length+'</span>':'—'}</div>
-      <div class="kpi-sub">${has?wNow.toFixed(1)+' W ahora · '+whToday+' Wh hoy':'sin datos aún'}</div>
-    </div>`;
-  }).join("");
-
-  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
-  const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
-  const labels=COLLECTORS.map(c=>c.label),colors=COLLECTORS.map(c=>c.color);
-  const whData=COLLECTORS.map(c=>{const dw=DATA[c.key].dailyWh;return dw.length?dw[dw.length-1]:0;});
-  const wData=COLLECTORS.map(c=>{const d=DATA[c.key];return +(d.aliases.reduce((s,a)=>s+(d.latest[a]?d.latest[a].watts:0),0)).toFixed(1);});
-  const barOpts=lbl=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{ticks:{color:tc,font:{size:11}},grid:{display:false},border:{display:false}},
-            y:{ticks:{color:tc,font:{size:10},callback:v=>v+lbl},grid:{color:gc},border:{display:false}}}});
-  new Chart(document.getElementById("cmpWhChart"),{type:"bar",data:{labels,datasets:[{data:whData,backgroundColor:colors,borderRadius:4}]},options:barOpts("Wh")});
-  new Chart(document.getElementById("cmpWChart"),{type:"bar",data:{labels,datasets:[{data:wData,backgroundColor:colors,borderRadius:4}]},options:barOpts("W")});
-
-  // Tabla combinada.
-  const tb=document.getElementById("cmpTable");
-  let html="";
-  COLLECTORS.forEach(c=>{
-    const d=DATA[c.key];
-    const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
-    aliases.forEach(a=>{
-      const r=d.latest[a],u=d.uptime[a];
-      html+=`<tr>
-        <td><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};margin-right:6px;"></span>${c.label}</td>
-        <td>${deviceLabel(c.key,a)}</td>
-        <td>${estadoBadge(r?r.is_on:null)}</td>
-        <td class="num">${r?r.watts.toFixed(1):'—'}</td>
-        <td class="num">${r?r.today_wh.toFixed(1):'—'}</td>
-        <td class="num" style="color:${upColor(u)}">${u!==null&&u!==undefined?u+'%':'—'}</td>
-      </tr>`;
-    });
-  });
-  tb.innerHTML=html||`<tr><td colspan="6" class="empty">Sin datos todavía.</td></tr>`;
-}
-
-function renderCollectorPanel(c){
-  const d=DATA[c.key];
-  const panel=document.getElementById("tab-"+c.key);
-  const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
-  if(!aliases.length){
-    panel.innerHTML=`<div class="card"><div class="empty">No hay datos de <b>${c.label}</b> todavía.<br>Se llenará cuando el collector <code>collectors/${c.key}/collect.py</code> empiece a registrar en <code>energy_logs/${c.key}/</code>.</div></div>`;
-    return;
+function renderSchoolCards(){
+  const cards=document.getElementById("schoolCards");cards.innerHTML="";
+  for(const [sid,data] of Object.entries(SCHOOLS)){
+    if(!data.aulas.length)continue;
+    const sev=schoolWorst(sid),color=semColor(sev);
+    const sevName=sev>=3?"alta":sev>=1?"media":"";
+    const nFlags=data.aulas.reduce((s,a)=>s+(_flags[a]||[]).length,0);
+    const emojis=[...new Set(data.aulas.flatMap(a=>(_flags[a]||[]).map(f=>FLAG_DEFS[f.type].emoji)))].join(" ");
+    const active=data.aulas.filter(a=>_latest[a]&&_latest[a].is_on===1).length;
+    const div=document.createElement("div");
+    div.className=`school-card ${sevName?"flag-"+sevName:""} ${_selSchool===sid?"sel":""}`;
+    div.innerHTML=`
+      <div class="school-sem" style="background:${color}"></div>
+      <div class="school-name">${data.name}</div>
+      <div class="school-meta">${data.aulas.length} aula${data.aulas.length>1?"s":""} · monitoreo 24/7</div>
+      <div class="school-stats">
+        <div class="school-stat">Activas <b>${active}/${data.aulas.length}</b></div>
+        <div class="school-stat">Flags <b>${nFlags}</b></div>
+      </div>
+      <div class="school-flags">${emojis||'<span style="color:var(--green-mid);font-size:11px;letter-spacing:0">● sin novedad</span>'}</div>`;
+    div.addEventListener("click",()=>selectSchool(sid));
+    cards.appendChild(div);
   }
-  const rowsHtml=aliases.map(a=>{
-    const r=d.latest[a],u=d.uptime[a];
-    return `<tr>
-      <td>${deviceLabel(c.key,a)}</td>
-      <td>${estadoBadge(r?r.is_on:null)}</td>
-      <td class="num">${r?r.watts.toFixed(1):'—'}</td>
-      <td class="num">${r?r.today_wh.toFixed(1):'—'}</td>
-      <td class="num" style="color:${upColor(u)}">${u!==null?u+'%':'—'}</td>
-    </tr>`;
-  }).join("");
-  const upHtml=aliases.map(a=>{
-    const u=d.uptime[a];
-    return `<div class="uptime-row"><div class="uptime-label">${deviceLabel(c.key,a)}</div>
-      <div class="uptime-track"><div class="uptime-fill" style="width:${u||0}%;background:${upColor(u)}"></div></div>
-      <div class="uptime-pct" style="color:${upColor(u)}">${u!==null?u+'%':'—'}</div></div>`;
-  }).join("");
-  panel.innerHTML=`
-    <div class="card">
-      <div class="section-title">Dispositivos ${c.label} — lectura más reciente</div>
-      <table><thead><tr><th>Dispositivo</th><th>Estado</th><th class="num">Watts</th><th class="num">Wh hoy</th><th class="num">Uptime 7d</th></tr></thead>
-      <tbody>${rowsHtml}</tbody></table>
-    </div>
-    <div class="two-col">
-      <div class="card">
-        <div class="section-title">Consumo diario — últimos 7 días (Wh)</div>
-        <div style="position:relative;height:170px;"><canvas id="trend-${c.key}"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="section-title">Uptime 7 días por dispositivo</div>
-        ${upHtml}
-      </div>
+}
+
+function selectSchool(sid){
+  _selSchool=sid;_selAula=null;
+  renderSchoolCards();renderAulaDetail();
+  if(_map){const s=SCHOOLS[sid];_map.setView([s.lat,s.lng],15);if(_markers[sid])_markers[sid].openPopup();}
+}
+
+function renderAulaDetail(){
+  const sec=document.getElementById("detailSection");
+  if(!_selSchool){sec.style.display="none";return;}
+  sec.style.display="block";
+  const data=SCHOOLS[_selSchool];
+  document.getElementById("detailTitle").textContent=`Detalle de aulas — ${data.name}`;
+  const box=document.getElementById("aulaDetail");
+  box.innerHTML=data.aulas.map(a=>{
+    const r=_latest[a],flags=_flags[a]||[];
+    const sev=worstSev(flags),color=semColor(sev);
+    const w=r?r.watts.toFixed(1)+"W":"—";
+    const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join(" ")||'<span style="color:var(--green-mid)">●</span>';
+    return `<div class="aula-row ${_selAula===a?"sel":""}" data-aula="${a}">
+      <span class="aula-sem" style="background:${color}"></span>
+      <div class="aula-info"><div class="aula-name">${data.aula||DEVICES[a].aula}</div>
+        <div class="aula-sub">${r?(r.is_on===1?"ON":"OFF")+" · "+fmtTime(r.t):"sin datos"}</div></div>
+      <div class="aula-flags">${emojis}</div>
+      <div class="aula-w" style="color:${r&&r.is_on===1?"var(--green-mid)":"var(--red-mid)"}">${w}</div>
     </div>`;
+  }).join("")+`<div class="tl-wrap" id="detailTl" style="display:none"></div>`;
+  box.querySelectorAll(".aula-row").forEach(row=>row.addEventListener("click",()=>{
+    _selAula=row.dataset.aula;renderAulaDetail();renderTimeline("detailTl",_selAula);
+  }));
+  if(_selAula)renderTimeline("detailTl",_selAula);
+}
+
+function renderTimeline(targetId,alias){
+  const el=document.getElementById(targetId);if(!el)return;
+  el.style.display="block";
+  const hours=Array.from({length:24},(_,i)=>i);
+  let html=`<div class="tl-title">${DEVICES[alias].aula} — intensidad por hora</div><div class="tl-grid">`;
+  _weekDays.forEach(date=>{
+    const dayRows=_byAlias[alias].filter(r=>dayKey(r.t)===date);
+    const lbl=new Date(date+"T12:00").toLocaleDateString("es",{weekday:"short",day:"numeric"});
+    const bars=hours.map(h=>{
+      const hr=dayRows.filter(r=>new Date(r.t).getHours()===h);
+      const avg=hr.length?hr.reduce((s,r)=>s+r.watts,0)/hr.length:undefined;
+      return `<div class="tl-cell" style="background:${hr.length?intensityColor(avg):"#e8e6df"}" title="${hr.length?h+":00 · "+avg.toFixed(1)+"W":h+":00 · sin datos"}"></div>`;
+    }).join("");
+    html+=`<div class="tl-row"><div class="tl-lbl">${lbl}</div><div class="tl-bars">${bars}</div></div>`;
+  });
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+
+function renderFlags(){
+  const flat=[];
+  Object.entries(_flags).forEach(([a,fs])=>fs.forEach(f=>flat.push({alias:a,...f})));
+  flat.sort((x,y)=>SEV_RANK[FLAG_DEFS[y.type].sev]-SEV_RANK[FLAG_DEFS[x.type].sev] || (y.durMs||0)-(x.durMs||0));
+  const sec=document.getElementById("flagSection");
+  if(!flat.length){sec.style.display="none";return;}
+  sec.style.display="block";
+  document.getElementById("flagList").innerHTML=flat.map(f=>{
+    const def=FLAG_DEFS[f.type],dev=DEVICES[f.alias],sch=SCHOOLS[dev.schoolId];
+    return `<div class="flag-card ${def.sev}">
+      <div class="flag-emoji">${def.emoji}</div>
+      <div class="flag-body">
+        <div class="flag-title">${def.label}</div>
+        <div class="flag-loc">${dev.aula} · ${sch?sch.name:"—"}</div>
+      </div>
+      <div class="flag-meta">
+        <div class="flag-metric">Inicio<b>${fmtTime(f.start)}</b></div>
+        <div class="flag-metric">Duración<b>${humanDur(f.durMs)}</b></div>
+      </div>
+      <span class="sev-badge sev-${def.sev}">${def.sev}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderFlagLegend(){
+  document.getElementById("flagLegend").innerHTML=Object.values(FLAG_DEFS).map(d=>
+    `<div><span style="font-size:14px">${d.emoji}</span> ${d.label} <span style="color:var(--hint)">(${d.sev})</span></div>`).join("");
+}
+
+function renderTrend(){
   const dark=matchMedia("(prefers-color-scheme:dark)").matches;
   const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
-  new Chart(document.getElementById("trend-"+c.key),{type:"bar",
-    data:{labels:d.days.map(x=>x.slice(5)),datasets:[{data:d.dailyWh,backgroundColor:d.days.map((_,i)=>i===6?c.color:c.color+"88"),borderRadius:3}]},
+  const days7=getDays(7);
+  new Chart(document.getElementById("trendChart"),{type:"bar",
+    data:{labels:days7.map(d=>d.slice(5)),datasets:[{data:_dailyWh,backgroundColor:days7.map((_,i)=>i===6?"#639922":"#97c459"),borderRadius:3}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{x:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}},
               y:{ticks:{color:tc,font:{size:10},callback:v=>v+"Wh"},grid:{color:gc},border:{display:false}}}}});
 }
 
-async function main(){
-  buildTabs();
-  const resp=await fetch(`${REPO}/config.json`);
-  CFG=await resp.json();
-  if(CFG.pilot&&CFG.pilot.name)document.getElementById("pilot-title").textContent=CFG.pilot.name+" — Comparativo";
-
-  await Promise.all(COLLECTORS.map(c=>loadCollector(c.key)));
-  devicesFromConfig();
-
-  renderCompare();
-  COLLECTORS.forEach(renderCollectorPanel);
-
-  // Topbar resumen.
-  let totalDev=0,totalActive=0,lastTs="";
-  COLLECTORS.forEach(c=>{
-    const d=DATA[c.key];
-    const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
-    totalDev+=aliases.length;
-    totalActive+=aliases.filter(a=>d.latest[a]&&d.latest[a].is_on===1).length;
-    d.rows.forEach(r=>{if(r.timestamp>lastTs)lastTs=r.timestamp;});
-  });
-  document.getElementById("subtitle").textContent=`${COLLECTORS.length} tecnologías · ${totalDev} dispositivos · sync cada 5 min`;
-  document.getElementById("active-badge").textContent=`${totalActive}/${totalDev} activos`;
-  document.getElementById("last-sync").textContent=lastTs?`Última: ${lastTs.slice(0,16).replace("T"," ")}`:"Sin lecturas";
+// ---- MAPA ----
+function renderMapAulaList(){
+  const list=document.getElementById("mapAulaList");
+  list.innerHTML=Object.keys(DEVICES).map(a=>{
+    const r=_latest[a],flags=_flags[a]||[],dev=DEVICES[a];
+    const sev=worstSev(flags),color=semColor(sev);
+    const w=r?r.watts.toFixed(1)+"W":"—",on=r&&r.is_on===1;
+    const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join("");
+    return `<div class="aula-row" data-aula="${a}">
+      <span class="aula-sem" style="background:${color}"></span>
+      <div class="aula-info"><div class="aula-name">${dev.aula}</div>
+        <div class="aula-sub">${SCHOOLS[dev.schoolId]?SCHOOLS[dev.schoolId].name:"—"}</div></div>
+      <div class="aula-flags">${emojis}</div>
+      <div class="aula-w" style="color:${on?"var(--green-mid)":"var(--red-mid)"}">${w}</div>
+    </div>`;
+  }).join("");
+  list.querySelectorAll(".aula-row").forEach(row=>row.addEventListener("click",()=>{
+    const a=row.dataset.aula;_selAula=a;
+    list.querySelectorAll(".aula-row").forEach(x=>x.classList.toggle("sel",x.dataset.aula===a));
+    const dev=DEVICES[a],sch=SCHOOLS[dev.schoolId];
+    if(_map&&sch){_map.setView([sch.lat,sch.lng],15);if(_markers[dev.schoolId])_markers[dev.schoolId].openPopup();}
+    document.getElementById("mapTlSection").style.display="block";
+    renderTimeline("mapTlGrid",a);
+  }));
 }
-main().catch(e=>{document.getElementById("subtitle").textContent="Error: "+e.message;});
+
+function initMap(){
+  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
+  _map=L.map("map",{zoomControl:true}).setView([4.672,-74.058],12);
+  L.tileLayer(dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(_map);
+  Object.entries(SCHOOLS).forEach(([sid,data])=>{
+    if(!data.aulas.length)return;
+    const sev=schoolWorst(sid),color=semColor(sev);
+    const rows=data.aulas.map(a=>{
+      const flags=_flags[a]||[],emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join("")||"●";
+      return `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px;"><span>${DEVICES[a].aula}</span><span>${emojis}</span></div>`;
+    }).join("");
+    const icon=L.divIcon({html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:white;">${data.aulas.length}</div>`,className:"",iconSize:[30,30],iconAnchor:[15,15]});
+    const m=L.marker([data.lat,data.lng],{icon}).addTo(_map);
+    m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">${data.aulas.length} aula(s) Emporia</div>${rows}</div>`);
+    _markers[sid]=m;
+  });
+}
+
+function switchTab(id,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("tab-"+id).classList.add("active");
+  if(id==="mapa"&&!_mapInit){initMap();_mapInit=true;}
+}
+
+main().catch(e=>{document.getElementById("subtitle").textContent="Error: "+e.message;console.error(e);});
 </script>
 </body>
 </html>

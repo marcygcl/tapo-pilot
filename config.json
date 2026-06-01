@@ -47,11 +47,12 @@
   ],
   "emporia": {
     "account_email_env": "EMPORIA_EMAIL",
+    "_nota": "school_id y aula son PLACEHOLDER — ajustar a la asignación real de cada dispositivo Emporia.",
     "devices": [
-      {"alias": "one",   "gid": 606961, "aula": "Aula por confirmar"},
-      {"alias": "two",   "gid": 606964, "aula": "Aula por confirmar"},
-      {"alias": "three", "gid": 606969, "aula": "Aula por confirmar"},
-      {"alias": "four",  "gid": 606991, "aula": "Aula por confirmar"}
+      {"alias": "one",   "gid": 606961, "school_id": "school_1", "aula": "Aula 101"},
+      {"alias": "two",   "gid": 606964, "school_id": "school_1", "aula": "Aula 102"},
+      {"alias": "three", "gid": 606969, "school_id": "school_2", "aula": "Aula 103"},
+      {"alias": "four",  "gid": 606991, "school_id": "school_3", "aula": "Aula 201"}
     ]
   }
 }
