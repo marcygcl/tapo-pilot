@@ -9,7 +9,6 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "python-kasa>=0.10.2",
     "rich>=15.0.0",
-    "tapo==0.7.0",
     "tplink-cloud-api>=5.2.0",
     "twilio>=9.10.9",
 ]
