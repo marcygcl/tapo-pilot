@@ -18,7 +18,8 @@ jobs:
 
       - run: uv sync
 
-      - name: Run collector
+      - name: Run Tapo collector
+        continue-on-error: true
         env:
           TAPO_EMAIL:    ${{ secrets.TAPO_EMAIL }}
           TAPO_PASSWORD: ${{ secrets.TAPO_PASSWORD }}
@@ -26,7 +27,17 @@ jobs:
           SCHOOL_START:  "07:00"
           SCHOOL_END:    "16:00"
           FLAG_THRESHOLD_DAYS: "1"
-        run: uv run python scripts/collect.py --once
+        run: uv run python collectors/tapo/collect.py --once
+
+      - name: Run Emporia collector
+        continue-on-error: true
+        env:
+          EMPORIA_EMAIL:    ${{ secrets.EMPORIA_EMAIL }}
+          EMPORIA_PASSWORD: ${{ secrets.EMPORIA_PASSWORD }}
+          TIMEZONE:         America/Bogota
+          SCHOOL_START:     "07:00"
+          SCHOOL_END:       "16:00"
+        run: uv run python collectors/emporia/collect.py --once
 
       - name: Send alerts
         continue-on-error: true

@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Plug Pilot — Bogotá 2026</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <title>Smart Plug Pilot — Comparativo</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
@@ -17,367 +15,278 @@
     .topbar h1{font-size:15px;font-weight:500;}.topbar p{font-size:11px;color:var(--muted);margin-top:1px;}
     .topbar-right{display:flex;align-items:center;gap:8px;}
     .pill{font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;white-space:nowrap;}
-    .pill-green{background:var(--green-bg);color:var(--green);}.pill-red{background:var(--red-bg);color:var(--red);}.pill-blue{background:var(--blue-bg);color:var(--blue);}
+    .pill-green{background:var(--green-bg);color:var(--green);}.pill-blue{background:var(--blue-bg);color:var(--blue);}
     .sync{font-size:11px;color:var(--hint);}
     .tabs{display:flex;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0;}
-    .tab{padding:10px 24px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color 0.15s,border-color 0.15s;}
+    .tab{padding:10px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;display:flex;align-items:center;gap:7px;}
     .tab:hover{color:var(--text);}.tab.active{color:var(--text);border-bottom-color:var(--text);}
-    .panel{display:none;flex:1;overflow:hidden;}.panel.active{display:flex;}
-
-    /* TAB 1 */
-    #tab-resumen{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:20px;}
+    .tab .dot{width:8px;height:8px;border-radius:50%;}
+    .panel{display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:20px;}.panel.active{display:flex;}
+    .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
     .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-    .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+    .kpi{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px;}
     .kpi-label{font-size:11px;color:var(--muted);margin-bottom:4px;}
     .kpi-value{font-size:26px;font-weight:500;}
     .kpi-sub{font-size:11px;color:var(--hint);margin-top:3px;}
-    .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;}
-    .school-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-    .school-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;}
-    .school-card.flag-red{border-color:var(--red-mid);}.school-card.flag-amber{border-color:var(--amber-mid);}
-    .school-name{font-size:13px;font-weight:500;margin-bottom:2px;}
-    .school-meta{font-size:11px;color:var(--muted);margin-bottom:10px;}
-    .school-sem{width:10px;height:10px;border-radius:50%;position:absolute;top:14px;right:14px;}
-    .school-stats{display:flex;gap:14px;}
-    .school-stat{font-size:11px;color:var(--muted);}
-    .school-stat b{color:var(--text);font-weight:500;}
-    .nudge-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-top:8px;background:var(--purple-bg);color:var(--purple);}
-    .alert-cards{display:flex;flex-direction:column;gap:8px;}
-    .alert-card{background:var(--surface);border:0.5px solid var(--border);border-left:3px solid;border-radius:var(--r);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;}
-    .alert-card.red{border-left-color:var(--red-mid);}.alert-card.amber{border-left-color:var(--amber-mid);}
-    .alert-name{font-size:13px;font-weight:500;}.alert-reason{font-size:11px;color:var(--muted);margin-top:2px;}
-    .alert-action{font-size:11px;padding:5px 12px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);color:var(--text);white-space:nowrap;}
-    .alert-action.red{background:var(--red-bg);color:var(--red);border-color:var(--red-mid);}
-    .alert-action.amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-mid);}
+    .card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px;}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
-    .chart-box{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;}
-    .uptime-bars{display:flex;flex-direction:column;gap:8px;}
-    .uptime-row{display:flex;align-items:center;gap:10px;}
-    .uptime-label{font-size:11px;color:var(--muted);width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    th{text-align:left;font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:.5px solid var(--border);}
+    td{padding:9px 10px;border-bottom:.5px solid var(--border);}
+    tr:last-child td{border-bottom:none;}
+    .num{text-align:right;font-variant-numeric:tabular-nums;}
+    .badge{font-size:11px;font-weight:500;padding:2px 9px;border-radius:12px;white-space:nowrap;}
+    .badge-on{background:var(--green-bg);color:var(--green);}
+    .badge-off{background:var(--red-bg);color:var(--red);}
+    .badge-na{background:var(--bg);color:var(--muted);}
+    .uptime-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+    .uptime-label{font-size:11px;color:var(--muted);width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .uptime-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;}
     .uptime-fill{height:100%;border-radius:4px;}
     .uptime-pct{font-size:11px;font-weight:500;width:36px;text-align:right;flex-shrink:0;}
-
-    /* TAB 2 */
-    #tab-mapa{flex-direction:row;}
-    .map-wrap{flex:1;position:relative;}
-    #map{width:100%;height:100%;}
-    .map-legend{position:absolute;bottom:20px;left:12px;z-index:1000;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:11px;}
-    .map-legend b{display:block;margin-bottom:5px;}
-    .leg-row{display:flex;align-items:center;gap:6px;margin-top:4px;}
-    .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-    .map-side{width:320px;border-left:0.5px solid var(--border);background:var(--surface);overflow-y:auto;display:flex;flex-direction:column;}
-    .map-sec{padding:12px 14px;border-bottom:0.5px solid var(--border);}
-    .map-sec-title{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
-    .plug-list{display:flex;flex-direction:column;gap:5px;}
-    .plug-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color 0.15s;}
-    .plug-row:hover{border-color:var(--muted);}.plug-row.sel{border-color:var(--blue);background:var(--blue-bg);}
-    .plug-row.amber{border-color:var(--amber-mid);}.plug-row.red{border-color:var(--red-mid);}
-    .sem{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-    .plug-info{flex:1;min-width:0;}
-    .plug-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .plug-meta{font-size:10px;color:var(--muted);}
-    .plug-w{font-size:12px;font-weight:500;flex-shrink:0;}
-    .tl-wrap{padding:12px 14px;border-bottom:0.5px solid var(--border);}
-    .tl-title{font-size:11px;font-weight:500;margin-bottom:8px;}
-    .tl-grid{display:flex;flex-direction:column;gap:4px;}
-    .tl-row{display:flex;align-items:center;gap:5px;}
-    .tl-lbl{font-size:10px;color:var(--muted);width:44px;flex-shrink:0;text-align:right;}
-    .tl-bars{display:flex;gap:1px;flex:1;}
-    .tl-cell{flex:1;height:12px;border-radius:2px;}
-    .leg{display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:8px;}
-    .leg-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle;}
-
-    @media(max-width:900px){
-      .kpi-grid{grid-template-columns:repeat(2,1fr);}
-      .school-cards{grid-template-columns:1fr;}
-      .two-col{grid-template-columns:1fr;}
-      #tab-mapa{flex-direction:column;}
-      .map-side{width:100%;height:280px;border-left:none;border-top:0.5px solid var(--border);}
-    }
+    .empty{padding:40px;text-align:center;color:var(--hint);font-size:13px;}
+    .legend-pill{display:inline-block;font-size:10px;color:var(--muted);margin-left:8px;}
+    @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.two-col{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
 <div class="topbar">
-  <div><h1 id="pilot-title">Smart Plug Pilot — Bogotá 2026</h1><p id="subtitle">Cargando datos...</p></div>
+  <div><h1 id="pilot-title">Smart Plug Pilot — Comparativo</h1><p id="subtitle">Cargando datos...</p></div>
   <div class="topbar-right">
     <span class="pill pill-blue" id="active-badge">—</span>
-    <span class="pill pill-green" id="flag-badge">—</span>
     <span class="sync" id="last-sync">—</span>
   </div>
 </div>
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
-  <div class="tab" onclick="switchTab('mapa',this)">Mapa</div>
-</div>
+<div class="tabs" id="tabs"></div>
 
-<div class="panel active" id="tab-resumen">
-  <div class="kpi-grid" id="kpiGrid"></div>
-  <div>
-    <div class="section-title">Estado por colegio</div>
-    <div class="school-cards" id="schoolCards"></div>
-  </div>
-  <div id="alertSection" style="display:none">
-    <div class="section-title">Alertas activas</div>
-    <div class="alert-cards" id="alertCards"></div>
-  </div>
+<!-- Panel comparativo -->
+<div class="panel active" id="tab-compare">
+  <div class="kpi-grid" id="cmpKpis"></div>
   <div class="two-col">
-    <div class="chart-box">
-      <div class="section-title" style="margin-bottom:12px;">Consumo diario — últimos 7 días (Wh)</div>
-      <div style="position:relative;height:150px;"><canvas id="trendChart" role="img" aria-label="Consumo diario">Gráfico.</canvas></div>
+    <div class="card">
+      <div class="section-title">Consumo de hoy por tecnología (Wh)</div>
+      <div style="position:relative;height:200px;"><canvas id="cmpWhChart"></canvas></div>
     </div>
-    <div class="chart-box">
-      <div class="section-title" style="margin-bottom:12px;">Uptime 24h por aula — últimos 7 días</div>
-      <div class="uptime-bars" id="uptimeBars"></div>
+    <div class="card">
+      <div class="section-title">Watts en tiempo real por tecnología</div>
+      <div style="position:relative;height:200px;"><canvas id="cmpWChart"></canvas></div>
     </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Todos los dispositivos</div>
+    <table><thead><tr>
+      <th>Tecnología</th><th>Dispositivo</th><th>Estado</th>
+      <th class="num">Watts</th><th class="num">Wh hoy</th><th class="num">Uptime 7d</th>
+    </tr></thead><tbody id="cmpTable"></tbody></table>
   </div>
 </div>
 
-<div class="panel" id="tab-mapa">
-  <div class="map-wrap">
-    <div id="map"></div>
-    <div class="map-legend">
-      <b>Semáforo semanal</b>
-      <div class="leg-row"><span class="dot" style="background:#639922"></span>Normal</div>
-      <div class="leg-row"><span class="dot" style="background:#ef9f27"></span>Alerta — 1 día apagado</div>
-      <div class="leg-row"><span class="dot" style="background:#e24b4a"></span>Bandera — visita requerida</div>
-      <div class="leg-row"><span class="dot" style="background:#888780"></span>Sin datos</div>
-    </div>
-  </div>
-  <div class="map-side">
-    <div class="map-sec">
-      <div class="map-sec-title">Aulas — click para detalle</div>
-      <div class="plug-list" id="plugList"></div>
-    </div>
-    <div class="tl-wrap" id="tlSection" style="display:none">
-      <div class="tl-title" id="tlTitle">Intensidad por hora</div>
-      <div class="tl-grid" id="tlGrid"></div>
-      <div class="leg">
-        <span><span class="leg-dot" style="background:#3b6d11"></span>Alta</span>
-        <span><span class="leg-dot" style="background:#639922"></span>Media</span>
-        <span><span class="leg-dot" style="background:#ef9f27"></span>Baja</span>
-        <span><span class="leg-dot" style="background:#e24b4a"></span>Apagado</span>
-        <span><span class="leg-dot" style="background:#d3d1c7"></span>Sin datos</span>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Paneles por collector (generados) -->
+<div class="panel" id="tab-tapo"></div>
+<div class="panel" id="tab-emporia"></div>
+<div class="panel" id="tab-shelly"></div>
 
 <script>
 const REPO="https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
-let CFG=null,DEV={},SCHOOLS={};
-let _map,_mapInit=false,_markers={},_allRows=[],_weekDays=[],_selAlias=null;
-let _dOff={},_uptime={},_latest={};
-const NUDGE_LABELS={"sms":"SMS","whatsapp":"WhatsApp","visita":"Visita presencial","llamada":"Llamada","tbd":"Por definir"};
+const TZ="America/Bogota";
+// Cada tecnología: clave de subcarpeta en energy_logs/ y color de marca.
+const COLLECTORS=[
+  {key:"tapo",    label:"Tapo",    color:"#378add"},
+  {key:"emporia", label:"Emporia", color:"#639922"},
+  {key:"shelly",  label:"Shelly",  color:"#ba7517"},
+];
+let CFG=null;
+const DATA={}; // key -> {rows, latest, uptime, dailyWh, devices}
 
+const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toLocaleDateString('en-CA',{timeZone:TZ});});
+const dayKey=ts=>new Date(ts).toLocaleDateString('en-CA',{timeZone:TZ});
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
+
+const fetchCSV=(coll,date)=>new Promise(res=>{
+  Papa.parse(`${REPO}/energy_logs/${coll}/${date}.csv`,{download:true,header:true,
+    complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp&&typeof x.timestamp==="string")),
+    error:()=>res([])});
+});
+
+function buildTabs(){
+  const tabs=document.getElementById("tabs");
+  tabs.innerHTML=`<div class="tab active" data-tab="compare" onclick="switchTab('compare',this)">Comparativo</div>`+
+    COLLECTORS.map(c=>`<div class="tab" data-tab="${c.key}" onclick="switchTab('${c.key}',this)"><span class="dot" style="background:${c.color}"></span>${c.label}</div>`).join("");
+}
 function switchTab(id,el){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
   el.classList.add("active");
   document.getElementById("tab-"+id).classList.add("active");
-  if(id==="mapa"&&!_mapInit){initMap();_mapInit=true;}
 }
 
-const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toLocaleDateString('en-CA',{timeZone:'America/Bogota'});});
-const getWeek=()=>{const t=new Date(),m=new Date(t);m.setDate(t.getDate()-t.getDay()+1);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toLocaleDateString('en-CA',{timeZone:'America/Bogota'});});};
+// Etiqueta legible de un dispositivo (aula del config si existe, si no el alias).
+function deviceLabel(coll,alias){
+  const d=(DATA[coll].devices||{})[alias];
+  return d&&d.aula?d.aula:alias;
+}
 
-// Sin filtro de horario escolar — todo 24/7
-const wColor=w=>{if(w===undefined||w===null)return"#d3d1c7";if(w<=2)return"#e24b4a";if(w<=10)return"#ef9f27";if(w<=28)return"#639922";return"#3b6d11";};
-const semColor=v=>v===null?"#888780":v===0?"#639922":v===1?"#ef9f27":"#e24b4a";
-
-const fetchCSV=date=>new Promise(res=>{
-  Papa.parse(`${REPO}/energy_logs/${date}.csv`,{download:true,header:true,dynamicTyping:false,
-    complete:r=>res((r.data||[]).filter(r=>r&&r.timestamp&&typeof r.timestamp==="string")),
-    error:()=>res([])});
-});
-async function main(){
-  const resp=await fetch(`${REPO}/config.json`);
-  CFG=await resp.json();
-  document.getElementById("pilot-title").textContent=CFG.pilot.name;
-
-  for(const school of CFG.schools){
-    SCHOOLS[school.id]={name:school.name,lat:school.lat,lng:school.lng,plugs:[],nudge:school.nudge_type||"tbd"};
-    for(const plug of school.plugs){
-      DEV[plug.tapo_alias]={aula:plug.aula,colegio:school.name,schoolId:school.id};
-      SCHOOLS[school.id].plugs.push(plug.tapo_alias);
-    }
-  }
-
-  const days7=getDays(7),week=getWeek();
-  _weekDays=week;
-  const frames=await Promise.all(days7.map(fetchCSV));
-  _allRows=frames.flat().map(r=>({...r,is_on:+r.is_on,watts:+r.watts,today_wh:+r.today_wh,month_wh:+r.month_wh}));
-
-  _allRows.forEach(r=>{_latest[r.alias]=r;});
-
-  Object.keys(DEV).forEach(a=>{
-    const rows=_allRows.filter(r=>r.alias===a);
-    const on=rows.filter(r=>r.is_on===1).length;
-    _uptime[a]=rows.length?Math.round(on/rows.length*100):null;
+async function loadCollector(coll){
+  const days=getDays(7);
+  const frames=await Promise.all(days.map(d=>fetchCSV(coll,d)));
+  const rows=frames.flat().map(r=>({...r,is_on:r.is_on===""?null:parseInt(r.is_on),watts:num(r.watts),today_wh:num(r.today_wh)}));
+  const latest={},uptime={};
+  rows.forEach(r=>{latest[r.alias]=r;});
+  const aliases=[...new Set(rows.map(r=>r.alias))];
+  aliases.forEach(a=>{
+    const ar=rows.filter(r=>r.alias===a&&r.is_on!==null);
+    const on=ar.filter(r=>r.is_on===1).length;
+    uptime[a]=ar.length?Math.round(on/ar.length*100):null;
   });
-
-  const weekRows=_allRows.filter(r=>week.includes(new Date(r.timestamp).toLocaleDateString('en-CA',{timeZone:'America/Bogota'})));
-  Object.keys(DEV).forEach(a=>{
-    const wdays=new Set(weekRows.filter(r=>r.alias===a).map(r=>new Date(r.timestamp).toLocaleDateString('en-CA',{timeZone:'America/Bogota'})));
-    const won=new Set(weekRows.filter(r=>r.alias===a&&r.is_on===1).map(r=>new Date(r.timestamp).toLocaleDateString('en-CA',{timeZone:'America/Bogota'})));
-    _dOff[a]=wdays.size?[...wdays].filter(d=>!won.has(d)).length:null;
+  // Wh consumido por día = max(today_wh) observado ese día (es acumulado).
+  const dailyWh=frames.map(fr=>{
+    const byA={};
+    fr.forEach(r=>{const w=num(r.today_wh);if(!(r.alias in byA)||w>byA[r.alias])byA[r.alias]=w;});
+    return +Object.values(byA).reduce((s,w)=>s+w,0).toFixed(1);
   });
+  DATA[coll]={rows,latest,uptime,dailyWh,days,aliases};
+}
 
-  const schoolMaxOff=sid=>SCHOOLS[sid].plugs.map(a=>_dOff[a]).filter(v=>v!==null).reduce((mx,v)=>Math.max(mx,v),-1);
-  const active=Object.values(_latest).filter(r=>r.is_on===1).length;
-  const total=Object.keys(DEV).length;
-  const ups=Object.values(_uptime).filter(v=>v!==null);
-  const avgUp=ups.length?Math.round(ups.reduce((a,b)=>a+b,0)/ups.length):0;
-  const flags=Object.values(_dOff).filter(v=>v!==null&&v>CFG.pilot.flag_threshold_days).length;
-  const wh=Object.values(_latest).reduce((s,r)=>s+(r.today_wh||0),0).toFixed(0);
-  const lastTs=_allRows.length?_allRows[_allRows.length-1].timestamp.slice(0,16).replace("T"," "):"—";
+function devicesFromConfig(){
+  // tapo: alias/aula desde schools[].plugs; emporia: emporia.devices[]
+  const tapo={};
+  (CFG.schools||[]).forEach(s=>(s.plugs||[]).forEach(p=>{tapo[p.tapo_alias]={aula:p.aula,colegio:s.name};}));
+  DATA.tapo.devices=tapo;
+  const emp={};
+  ((CFG.emporia||{}).devices||[]).forEach(d=>{emp[d.alias]={aula:d.aula,gid:d.gid};});
+  DATA.emporia.devices=emp;
+  DATA.shelly.devices={};
+}
 
-  document.getElementById("subtitle").textContent=`${total} plugs · monitoreo 24/7 · sync cada 5 min`;
-  document.getElementById("active-badge").textContent=`${active}/${total} activos`;
-  const fb=document.getElementById("flag-badge");
-  fb.textContent=flags?`${flags} bandera${flags>1?"s":""}`:"Sin banderas";
-  fb.className=`pill ${flags?"pill-red":"pill-green"}`;
-  document.getElementById("last-sync").textContent=`Última: ${lastTs}`;
+function estadoBadge(is_on){
+  if(is_on===null||is_on===undefined)return `<span class="badge badge-na">N/A</span>`;
+  return is_on===1?`<span class="badge badge-on">ON</span>`:`<span class="badge badge-off">OFF</span>`;
+}
+function upColor(u){return u===null?"#d3d1c7":u>=80?"#639922":u>=50?"#ef9f27":"#e24b4a";}
 
-  document.getElementById("kpiGrid").innerHTML=`
-    <div class="kpi"><div class="kpi-label">Filtros activos ahora</div><div class="kpi-value">${active}<span style="font-size:16px;color:var(--muted)">/${total}</span></div><div class="kpi-sub">${Math.round(active/total*100)}% de cobertura</div></div>
-    <div class="kpi"><div class="kpi-label">Uptime promedio 7 días</div><div class="kpi-value">${avgUp?avgUp+"%":"—"}</div><div class="kpi-sub">monitoreo 24/7</div></div>
-    <div class="kpi"><div class="kpi-label">Banderas esta semana</div><div class="kpi-value" style="color:${flags?"var(--red-mid)":"var(--green-mid)"}">${flags}</div><div class="kpi-sub">días completamente apagado</div></div>
-    <div class="kpi"><div class="kpi-label">Consumo hoy</div><div class="kpi-value">${wh}<span style="font-size:16px;color:var(--muted)"> Wh</span></div><div class="kpi-sub">todos los plugs</div></div>
-  `;
+function renderCompare(){
+  // KPIs: un resumen por tecnología.
+  const kpis=document.getElementById("cmpKpis");
+  kpis.innerHTML=COLLECTORS.map(c=>{
+    const d=DATA[c.key];
+    const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
+    const active=aliases.filter(a=>d.latest[a]&&d.latest[a].is_on===1).length;
+    const wNow=aliases.reduce((s,a)=>s+(d.latest[a]?d.latest[a].watts:0),0);
+    const whToday=d.dailyWh.length?d.dailyWh[d.dailyWh.length-1]:0;
+    const has=aliases.length>0;
+    return `<div class="kpi">
+      <div class="kpi-label"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};margin-right:5px;"></span>${c.label}</div>
+      <div class="kpi-value">${has?active+'<span style="font-size:16px;color:var(--muted)">/'+aliases.length+'</span>':'—'}</div>
+      <div class="kpi-sub">${has?wNow.toFixed(1)+' W ahora · '+whToday+' Wh hoy':'sin datos aún'}</div>
+    </div>`;
+  }).join("");
 
-  const cards=document.getElementById("schoolCards");
-  cards.innerHTML="";
-  for(const [sid,data] of Object.entries(SCHOOLS)){
-    const maxOff=schoolMaxOff(sid);
-    const color=semColor(maxOff===-1?null:maxOff);
-    const flagCls=maxOff>=2?"flag-red":maxOff===1?"flag-amber":"";
-    const schoolUp=data.plugs.map(a=>_uptime[a]).filter(v=>v!==null);
-    const avgSchUp=schoolUp.length?Math.round(schoolUp.reduce((a,b)=>a+b,0)/schoolUp.length):null;
-    cards.innerHTML+=`
-      <div class="school-card ${flagCls}">
-        <div class="school-sem" style="background:${color}"></div>
-        <div class="school-name">${data.name}</div>
-        <div class="school-meta">${data.plugs.length} aulas · monitoreo 24/7</div>
-        <div class="school-stats">
-          <div class="school-stat">Uptime <b>${avgSchUp!==null?avgSchUp+"%":"—"}</b></div>
-          <div class="school-stat">Días off <b>${maxOff>=0?maxOff:"—"}</b></div>
-        </div>
-        <span class="nudge-badge">Nudge: ${NUDGE_LABELS[data.nudge]||data.nudge}</span>
-      </div>`;
-  }
-
-  const alertsData=Object.entries(_dOff).filter(([,v])=>v!==null&&v>0).sort(([,a],[,b])=>b-a);
-  const alertSec=document.getElementById("alertSection");
-  if(alertsData.length){
-    alertSec.style.display="block";
-    const ac=document.getElementById("alertCards");
-    ac.innerHTML="";
-    alertsData.forEach(([alias,off])=>{
-      const cfg=DEV[alias],lvl=off>=2?"red":"amber";
-      ac.innerHTML+=`
-        <div class="alert-card ${lvl}">
-          <div>
-            <div class="alert-name">${cfg.aula} · ${cfg.colegio}</div>
-            <div class="alert-reason">${off} día${off>1?"s":""} sin ninguna lectura ON · Nudge: ${NUDGE_LABELS[SCHOOLS[cfg.schoolId].nudge]||"—"}</div>
-          </div>
-          <div class="alert-action ${lvl}">${off>=2?"Visita requerida":"Monitorear"}</div>
-        </div>`;
-    });
-  }
-
-  const dailyWh=frames.map(rows=>{
-    const by={};
-    rows.forEach(r=>{if(r.alias)by[r.alias]=r;});
-    return+Object.values(by).reduce((s,r)=>s+(+r.today_wh||0),0).toFixed(1);
-  });
   const dark=matchMedia("(prefers-color-scheme:dark)").matches;
   const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
-  new Chart(document.getElementById("trendChart"),{type:"bar",
-    data:{labels:days7.map(d=>d.slice(5)),datasets:[{data:dailyWh,backgroundColor:days7.map((_,i)=>i===6?"#639922":"#97c459"),borderRadius:3}]},
+  const labels=COLLECTORS.map(c=>c.label),colors=COLLECTORS.map(c=>c.color);
+  const whData=COLLECTORS.map(c=>{const dw=DATA[c.key].dailyWh;return dw.length?dw[dw.length-1]:0;});
+  const wData=COLLECTORS.map(c=>{const d=DATA[c.key];return +(d.aliases.reduce((s,a)=>s+(d.latest[a]?d.latest[a].watts:0),0)).toFixed(1);});
+  const barOpts=lbl=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{color:tc,font:{size:11}},grid:{display:false},border:{display:false}},
+            y:{ticks:{color:tc,font:{size:10},callback:v=>v+lbl},grid:{color:gc},border:{display:false}}}});
+  new Chart(document.getElementById("cmpWhChart"),{type:"bar",data:{labels,datasets:[{data:whData,backgroundColor:colors,borderRadius:4}]},options:barOpts("Wh")});
+  new Chart(document.getElementById("cmpWChart"),{type:"bar",data:{labels,datasets:[{data:wData,backgroundColor:colors,borderRadius:4}]},options:barOpts("W")});
+
+  // Tabla combinada.
+  const tb=document.getElementById("cmpTable");
+  let html="";
+  COLLECTORS.forEach(c=>{
+    const d=DATA[c.key];
+    const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
+    aliases.forEach(a=>{
+      const r=d.latest[a],u=d.uptime[a];
+      html+=`<tr>
+        <td><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};margin-right:6px;"></span>${c.label}</td>
+        <td>${deviceLabel(c.key,a)}</td>
+        <td>${estadoBadge(r?r.is_on:null)}</td>
+        <td class="num">${r?r.watts.toFixed(1):'—'}</td>
+        <td class="num">${r?r.today_wh.toFixed(1):'—'}</td>
+        <td class="num" style="color:${upColor(u)}">${u!==null&&u!==undefined?u+'%':'—'}</td>
+      </tr>`;
+    });
+  });
+  tb.innerHTML=html||`<tr><td colspan="6" class="empty">Sin datos todavía.</td></tr>`;
+}
+
+function renderCollectorPanel(c){
+  const d=DATA[c.key];
+  const panel=document.getElementById("tab-"+c.key);
+  const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
+  if(!aliases.length){
+    panel.innerHTML=`<div class="card"><div class="empty">No hay datos de <b>${c.label}</b> todavía.<br>Se llenará cuando el collector <code>collectors/${c.key}/collect.py</code> empiece a registrar en <code>energy_logs/${c.key}/</code>.</div></div>`;
+    return;
+  }
+  const rowsHtml=aliases.map(a=>{
+    const r=d.latest[a],u=d.uptime[a];
+    return `<tr>
+      <td>${deviceLabel(c.key,a)}</td>
+      <td>${estadoBadge(r?r.is_on:null)}</td>
+      <td class="num">${r?r.watts.toFixed(1):'—'}</td>
+      <td class="num">${r?r.today_wh.toFixed(1):'—'}</td>
+      <td class="num" style="color:${upColor(u)}">${u!==null?u+'%':'—'}</td>
+    </tr>`;
+  }).join("");
+  const upHtml=aliases.map(a=>{
+    const u=d.uptime[a];
+    return `<div class="uptime-row"><div class="uptime-label">${deviceLabel(c.key,a)}</div>
+      <div class="uptime-track"><div class="uptime-fill" style="width:${u||0}%;background:${upColor(u)}"></div></div>
+      <div class="uptime-pct" style="color:${upColor(u)}">${u!==null?u+'%':'—'}</div></div>`;
+  }).join("");
+  panel.innerHTML=`
+    <div class="card">
+      <div class="section-title">Dispositivos ${c.label} — lectura más reciente</div>
+      <table><thead><tr><th>Dispositivo</th><th>Estado</th><th class="num">Watts</th><th class="num">Wh hoy</th><th class="num">Uptime 7d</th></tr></thead>
+      <tbody>${rowsHtml}</tbody></table>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Consumo diario — últimos 7 días (Wh)</div>
+        <div style="position:relative;height:170px;"><canvas id="trend-${c.key}"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Uptime 7 días por dispositivo</div>
+        ${upHtml}
+      </div>
+    </div>`;
+  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
+  const tc=dark?"#888780":"#6b6a66",gc=dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
+  new Chart(document.getElementById("trend-"+c.key),{type:"bar",
+    data:{labels:d.days.map(x=>x.slice(5)),datasets:[{data:d.dailyWh,backgroundColor:d.days.map((_,i)=>i===6?c.color:c.color+"88"),borderRadius:3}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{x:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}},
               y:{ticks:{color:tc,font:{size:10},callback:v=>v+"Wh"},grid:{color:gc},border:{display:false}}}}});
+}
 
-  const ub=document.getElementById("uptimeBars");
-  ub.innerHTML="";
-  Object.entries(DEV).forEach(([alias,cfg])=>{
-    const up=_uptime[alias];
-    const color=up===null?"#d3d1c7":up>=80?"#639922":up>=50?"#ef9f27":"#e24b4a";
-    ub.innerHTML+=`<div class="uptime-row">
-      <div class="uptime-label">${cfg.aula}</div>
-      <div class="uptime-track"><div class="uptime-fill" style="width:${up||0}%;background:${color}"></div></div>
-      <div class="uptime-pct" style="color:${color}">${up!==null?up+"%":"—"}</div>
-    </div>`;
+async function main(){
+  buildTabs();
+  const resp=await fetch(`${REPO}/config.json`);
+  CFG=await resp.json();
+  if(CFG.pilot&&CFG.pilot.name)document.getElementById("pilot-title").textContent=CFG.pilot.name+" — Comparativo";
+
+  await Promise.all(COLLECTORS.map(c=>loadCollector(c.key)));
+  devicesFromConfig();
+
+  renderCompare();
+  COLLECTORS.forEach(renderCollectorPanel);
+
+  // Topbar resumen.
+  let totalDev=0,totalActive=0,lastTs="";
+  COLLECTORS.forEach(c=>{
+    const d=DATA[c.key];
+    const aliases=d.aliases.length?d.aliases:Object.keys(d.devices||{});
+    totalDev+=aliases.length;
+    totalActive+=aliases.filter(a=>d.latest[a]&&d.latest[a].is_on===1).length;
+    d.rows.forEach(r=>{if(r.timestamp>lastTs)lastTs=r.timestamp;});
   });
-
-  renderPlugList();
+  document.getElementById("subtitle").textContent=`${COLLECTORS.length} tecnologías · ${totalDev} dispositivos · sync cada 5 min`;
+  document.getElementById("active-badge").textContent=`${totalActive}/${totalDev} activos`;
+  document.getElementById("last-sync").textContent=lastTs?`Última: ${lastTs.slice(0,16).replace("T"," ")}`:"Sin lecturas";
 }
-
-function renderPlugList(){
-  const list=document.getElementById("plugList");
-  list.innerHTML="";
-  Object.entries(DEV).forEach(([alias,cfg])=>{
-    const r=_latest[alias],off=_dOff[alias];
-    const w=r?r.watts:null,on=r?r.is_on===1:false;
-    const row=document.createElement("div");
-    row.className=`plug-row ${off>=2?"red":off===1?"amber":""}`;
-    row.dataset.alias=alias;
-    row.innerHTML=`<span class="sem" style="background:${semColor(off)}"></span>
-      <div class="plug-info"><div class="plug-name">${cfg.aula}</div><div class="plug-meta">${cfg.colegio}</div></div>
-      <div class="plug-w" style="color:${on?"var(--green-mid)":"var(--red-mid)"}">${w!==null?w.toFixed(1)+"W":"—"}</div>`;
-    row.addEventListener("click",()=>selectPlug(alias));
-    list.appendChild(row);
-  });
-}
-
-function initMap(){
-  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
-  _map=L.map("map",{zoomControl:true}).setView([4.672,-74.058],12);
-  L.tileLayer(dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(_map);
-  const schoolMaxOff=sid=>{const offs=SCHOOLS[sid].plugs.map(a=>_dOff[a]).filter(v=>v!==null);return offs.length?Math.max(...offs):-1;};
-  Object.entries(SCHOOLS).forEach(([sid,data])=>{
-    const maxOff=schoolMaxOff(sid),color=semColor(maxOff===-1?null:maxOff);
-    const rows=data.plugs.map(a=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px;"><span>${DEV[a].aula}</span><span style="color:${semColor(_dOff[a])};font-weight:500;">${_dOff[a]===0||_dOff[a]===null?"OK":_dOff[a]===1?"Alerta":"Bandera"}</span></div>`).join("");
-    const icon=L.divIcon({html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:white;">${data.plugs.length}</div>`,className:"",iconSize:[30,30],iconAnchor:[15,15]});
-    const m=L.marker([data.lat,data.lng],{icon}).addTo(_map);
-    m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">Nudge: ${NUDGE_LABELS[data.nudge]||data.nudge}</div>${rows}</div>`);
-    _markers[sid]=m;
-  });
-}
-
-function selectPlug(alias){
-  _selAlias=alias;
-  document.querySelectorAll(".plug-row").forEach(r=>r.classList.toggle("sel",r.dataset.alias===alias));
-  const cfg=DEV[alias],school=SCHOOLS[cfg.schoolId];
-  if(_map)_map.setView([school.lat,school.lng],15);
-  if(_markers[cfg.schoolId])_markers[cfg.schoolId].openPopup();
-  renderTimeline(alias);
-}
-
-function renderTimeline(alias){
-  const sec=document.getElementById("tlSection");
-  if(!alias){sec.style.display="none";return;}
-  sec.style.display="block";
-  document.getElementById("tlTitle").textContent=`${DEV[alias].aula} — consumo por hora`;
-  const hours=Array.from({length:24},(_,i)=>i);
-  const grid=document.getElementById("tlGrid");
-  grid.innerHTML="";
-  _weekDays.forEach(date=>{
-    const dayRows=_allRows.filter(r=>r.alias===alias&&new Date(r.timestamp).toLocaleDateString('en-CA',{timeZone:'America/Bogota'})===date);
-    const lbl=new Date(date+"T12:00").toLocaleDateString("es",{weekday:"short",day:"numeric"});
-    const barsHtml=hours.map(h=>{
-      const hr=dayRows.filter(r=>new Date(r.timestamp).getHours()===h);
-      const avg=hr.length?hr.reduce((s,r)=>s+r.watts,0)/hr.length:undefined;
-      return `<div class="tl-cell" style="background:${hr.length?wColor(avg):"#e8e6df"}" title="${hr.length?h+":00 · "+avg.toFixed(1)+"W":h+":00 · sin datos"}"></div>`;
-    }).join("");
-    const row=document.createElement("div");
-    row.className="tl-row";
-    row.innerHTML=`<div class="tl-lbl">${lbl}</div><div class="tl-bars">${barsHtml}</div>`;
-    grid.appendChild(row);
-  });
-}
-
 main().catch(e=>{document.getElementById("subtitle").textContent="Error: "+e.message;});
 </script>
 </body>

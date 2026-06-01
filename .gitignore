@@ -1,1 +1,7 @@
 .env
+__pycache__/
+*.pyc
+.DS_Store
+# Token cache de Emporia (pyemvue)
+.emporia_tokens.json
+**/.emporia_tokens.json

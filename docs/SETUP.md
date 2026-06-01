@@ -9,14 +9,13 @@ cd tapo-pilot
 
 ## Paso 2: Instalar dependencias Python
 
+El proyecto usa [uv](https://docs.astral.sh/uv/) para gestionar el entorno y las dependencias:
+
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
-Si tienes múltiples versiones de Python:
-```bash
-python3 -m pip install -r requirements.txt
-```
+Esto crea el entorno virtual y lo deja listo. Cada comando se corre con `uv run python ...`.
 
 ## Paso 3: Configurar credenciales
 
@@ -24,14 +23,19 @@ python3 -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Editar `.env` con tu email y contraseña de la app Tapo (los mismos con los que creaste la cuenta TP-Link):
+Editar `.env` con las credenciales de cada tecnología de smart plug que vayas a usar
+(los mismos email/contraseña con los que creaste cada cuenta):
 
 ```
 TAPO_EMAIL=tu_email@ejemplo.com
 TAPO_PASSWORD=tu_contraseña
+
+EMPORIA_EMAIL=tu_email@ejemplo.com
+EMPORIA_PASSWORD=tu_contraseña
 ```
 
 > ⚠️ El archivo `.env` está en `.gitignore` y nunca se sube al repositorio.
+> El `.env.example` (plantilla) solo lleva los nombres de las variables, sin valores.
 
 ## Paso 4: Preparar los plugs físicamente
 
@@ -65,22 +69,28 @@ El script:
 ## Paso 6: Verificar la conexión
 
 ```bash
-python tests/test_connection.py
+uv run python tests/test_connection.py        # plugs Tapo
+uv run python scripts/test_emporia.py          # dispositivos Emporia
 ```
 
-Deberías ver todos los plugs en verde con su estado actual.
+Deberías ver todos los dispositivos con su estado actual.
 
 ## Paso 7: Iniciar recolección
 
+Cada tecnología tiene su propio collector en `collectors/<tecnología>/collect.py`.
+Sin argumentos hace polling continuo; con `--once` toma una sola lectura y sale.
+
 ```bash
-python scripts/collect.py
+uv run python collectors/tapo/collect.py        # Tapo, loop continuo
+uv run python collectors/emporia/collect.py      # Emporia, loop continuo
 ```
 
-Los datos se guardan en `energy_logs/YYYY-MM-DD.csv`. Para dejar el script corriendo en segundo plano en macOS:
+Los datos se guardan en `energy_logs/<tecnología>/YYYY-MM-DD.csv`. Para dejar un
+collector corriendo en segundo plano en macOS:
 
 ```bash
 # En una terminal separada o usando nohup:
-nohup python scripts/collect.py > logs/collect.log 2>&1 &
+nohup uv run python collectors/emporia/collect.py > emporia.log 2>&1 &
 
 # Ver el proceso corriendo:
 ps aux | grep collect.py
@@ -89,17 +99,15 @@ ps aux | grep collect.py
 kill <PID>
 ```
 
-## Paso 8: Revisar banderas semanalmente
+En producción, GitHub Actions (`.github/workflows/collect.yml`) corre cada
+collector con `--once` cada 5 minutos y commitea los CSVs automáticamente.
 
-```bash
-python scripts/weekly_flags.py
-```
+## Paso 8: Dashboard
 
-Genera el reporte de banderas de la semana actual. Para una semana específica:
-
-```bash
-python scripts/weekly_flags.py 2026-05-05
-```
+Abre `dashboard/index.html` en el navegador (o la versión publicada en GitHub
+Pages). Tiene una pestaña **Comparativo** entre tecnologías y una pestaña por
+cada collector (Tapo / Emporia / Shelly), con estado on/off, watts, Wh del día y
+uptime de los últimos 7 días.
 
 ---
 

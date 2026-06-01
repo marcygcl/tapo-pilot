@@ -5,68 +5,83 @@ Piloto 2026 — Colegios públicos de Bogotá.
 
 ## Estructura del proyecto
 
+El piloto soporta **múltiples tecnologías de smart plug en paralelo**. Cada
+tecnología tiene su propio *collector* y su carpeta de logs, pero todos comparten
+el mismo esquema y el mismo dashboard comparativo.
+
 ```
 tapo-pilot/
-├── scripts/
-│   ├── setup_plugs.py        # Nombrar y verificar los 6 plugs iniciales
-│   ├── collect.py            # Loop de recolección de datos cada 5 min
-│   ├── weekly_flags.py       # Detección de aulas con filtro apagado >1 día
-│   └── utils.py              # Funciones compartidas
-├── energy_logs/              # CSVs diarios generados automáticamente
+├── collectors/
+│   ├── common.py             # Config, .env, horario escolar y rutas de logs compartidas
+│   ├── tapo/collect.py       # Collector Tapo (TP-Link P115, API local)
+│   ├── emporia/collect.py    # Collector Emporia (Vue / smart outlets, pyemvue cloud)
+│   └── shelly/collect.py     # Collector Shelly (placeholder)
+├── energy_logs/
+│   ├── tapo/                 # CSVs diarios de Tapo
+│   ├── emporia/              # CSVs diarios de Emporia
+│   └── shelly/               # CSVs diarios de Shelly
 ├── dashboard/
-│   └── dashboard.html        # Dashboard de visualización (abrir en browser)
+│   └── index.html            # Dashboard comparativo (tabs por tecnología)
+├── scripts/
+│   ├── utils.py              # Funciones compartidas (legacy)
+│   ├── test_tapo_cloud.py    # Prueba de la API cloud de TP-Link
+│   └── test_emporia.py       # Prueba de login y listado de dispositivos Emporia
 ├── docs/
 │   └── SETUP.md              # Guía de configuración paso a paso
 ├── tests/
-│   └── test_connection.py    # Verificar conexión a cada plug
+│   └── test_connection.py    # Verificar conexión a cada plug Tapo
+├── config.json               # Colegios, plugs Tapo y dispositivos Emporia (GIDs)
 ├── .env.example              # Variables de entorno (copiar a .env)
 ├── .gitignore
-└── requirements.txt
+└── pyproject.toml / uv.lock  # Dependencias (gestionadas con uv)
 ```
+
+Cada collector escribe un CSV diario en `energy_logs/<tecnología>/YYYY-MM-DD.csv`
+con el esquema común `timestamp, alias, is_on, watts, today_wh, school_hours`
+(el de Tapo añade además `aula, colegio, intensity, month_wh, runtime_today_min`).
 
 ## Quickstart
 
 ### 1. Instalar dependencias
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### 2. Configurar credenciales
 
 ```bash
 cp .env.example .env
-# Editar .env con tu email y contraseña de la app Tapo
+# Editar .env con las credenciales de cada tecnología:
+#   TAPO_EMAIL / TAPO_PASSWORD        (app Tapo)
+#   EMPORIA_EMAIL / EMPORIA_PASSWORD  (app Emporia)
 ```
 
-### 3. Descubrir y nombrar los plugs
+### 3. Verificar conexión
 
 ```bash
-python scripts/setup_plugs.py
+uv run python tests/test_connection.py        # plugs Tapo
+uv run python scripts/test_emporia.py          # dispositivos Emporia
 ```
 
-Esto detecta todos los P115 en la red, muestra su IP y potencia actual,
-y te guía para asignar nombre (aula) y ubicación (colegio) a cada uno.
+### 4. Iniciar recolección de datos
 
-### 4. Verificar conexión
+Cada collector corre por separado. Sin argumentos hace polling cada 5 minutos;
+con `--once` toma una sola lectura y sale (es lo que usa GitHub Actions).
 
 ```bash
-python tests/test_connection.py
+uv run python collectors/tapo/collect.py        # loop continuo
+uv run python collectors/emporia/collect.py      # loop continuo
+uv run python collectors/emporia/collect.py --once   # una lectura
 ```
 
-### 5. Iniciar recolección de datos
+Los datos se guardan en `energy_logs/<tecnología>/YYYY-MM-DD.csv`.
 
-```bash
-python scripts/collect.py
-```
+### 5. Dashboard
 
-Los datos se guardan en `energy_logs/YYYY-MM-DD.csv` con una lectura cada 5 minutos.
-
-### 6. Detección de banderas (correr semanalmente)
-
-```bash
-python scripts/weekly_flags.py
-```
+Abre `dashboard/index.html` (o la versión publicada en GitHub Pages). Muestra una
+pestaña **Comparativo** entre tecnologías y una pestaña por cada collector
+(Tapo / Emporia / Shelly).
 
 ## Dispositivos del piloto
 

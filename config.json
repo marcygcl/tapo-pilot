@@ -44,5 +44,14 @@
         {"tapo_alias": "fridge", "aula": "Aula 202", "floor": 2, "ip": "192.168.0.237"}
       ]
     }
-  ]
+  ],
+  "emporia": {
+    "account_email_env": "EMPORIA_EMAIL",
+    "devices": [
+      {"alias": "one",   "gid": 606961, "aula": "Aula por confirmar"},
+      {"alias": "two",   "gid": 606964, "aula": "Aula por confirmar"},
+      {"alias": "three", "gid": 606969, "aula": "Aula por confirmar"},
+      {"alias": "four",  "gid": 606991, "aula": "Aula por confirmar"}
+    ]
+  }
 }

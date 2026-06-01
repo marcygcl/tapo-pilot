@@ -5,8 +5,11 @@ description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
     "pandas>=3.0.2",
+    "pyemvue>=0.18.9",
     "python-dotenv>=1.2.2",
+    "python-kasa>=0.10.2",
     "rich>=15.0.0",
+    "tapo==0.7.0",
     "tplink-cloud-api>=5.2.0",
     "twilio>=9.10.9",
 ]
