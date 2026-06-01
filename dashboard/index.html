@@ -87,7 +87,36 @@
     .map-side{width:340px;border-left:.5px solid var(--border);background:var(--surface);overflow-y:auto;display:flex;flex-direction:column;}
     .map-sec{padding:12px 14px;border-bottom:.5px solid var(--border);}
     .map-sec-title{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
-    @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}}
+    /* ALERTAS */
+    #tab-alertas{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:24px;}
+    .sim-banner{background:var(--amber-bg);color:var(--amber);border:.5px solid var(--amber-mid);border-radius:var(--r);padding:9px 14px;font-size:12px;font-weight:500;}
+    .alert-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;}
+    .alert-table th{text-align:left;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:.5px solid var(--border);background:var(--bg);}
+    .alert-table td{padding:9px 12px;border-bottom:.5px solid var(--border);}
+    .alert-table tr:last-child td{border-bottom:none;}
+    .alert-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+    .alert-table td[contenteditable]{outline:none;cursor:text;}
+    .alert-table td[contenteditable]:hover,.alert-table td[contenteditable]:focus{background:var(--blue-bg);}
+    .edit-hint{font-size:10px;color:var(--hint);margin-top:6px;}
+    .pipe-list{display:flex;flex-direction:column;gap:10px;}
+    .pipe-card{background:var(--surface);border:.5px solid var(--border);border-left:3px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+    .pipe-card.alta{border-left-color:var(--red-mid);}.pipe-card.media{border-left-color:var(--amber-mid);}.pipe-card.baja{border-left-color:var(--amber-mid);}
+    .pipe-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+    .pipe-title{font-size:13px;font-weight:500;}
+    .pipe-loc{font-size:11px;color:var(--muted);}
+    .pipe-action{font-size:11px;font-weight:500;padding:3px 10px;border-radius:12px;background:var(--purple-bg);color:var(--purple);white-space:nowrap;}
+    .pipe-stages{display:flex;align-items:flex-start;}
+    .pipe-stage{display:flex;flex-direction:column;align-items:center;text-align:center;width:120px;flex-shrink:0;}
+    .pipe-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--border);background:var(--bg);color:var(--muted);}
+    .pipe-dot.done{background:var(--green-mid);border-color:var(--green-mid);color:#fff;}
+    .pipe-dot.active{border-color:var(--blue);color:var(--blue);background:var(--blue-bg);}
+    .pipe-dot.failed{background:var(--red-mid);border-color:var(--red-mid);color:#fff;}
+    .pipe-lbl{font-size:11px;margin-top:6px;font-weight:500;}
+    .pipe-time{font-size:10px;color:var(--hint);margin-top:1px;}
+    .pipe-conn{height:2px;background:var(--border);flex:1;margin-top:13px;min-width:18px;}
+    .pipe-conn.done{background:var(--green-mid);}
+    .chan-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue);}
+    @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}.pipe-stage{width:90px;}}
   </style>
 </head>
 <body>
@@ -102,6 +131,7 @@
 <div class="tabs">
   <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
   <div class="tab" onclick="switchTab('mapa',this)">Mapa</div>
+  <div class="tab" onclick="switchTab('alertas',this)">Alertas</div>
 </div>
 
 <div class="panel active" id="tab-resumen">
@@ -161,6 +191,26 @@
   </div>
 </div>
 
+<div class="panel" id="tab-alertas">
+  <div class="sim-banner" id="simBanner" style="display:none">⚠️ Mostrando datos SIMULADOS — aún no hay registros en <code>alerts_log/</code>. Se reemplazarán automáticamente cuando lleguen alertas reales.</div>
+
+  <div>
+    <div class="section-title">1 · Pipeline de alertas activas</div>
+    <div class="pipe-list" id="pipeList"></div>
+  </div>
+
+  <div>
+    <div class="section-title">2 · Flujo de decisiones por flag (umbrales desde config.json)</div>
+    <table class="alert-table" id="decisionTable"></table>
+    <div class="edit-hint">Las celdas de Acción y Canal son editables para experimentar; los cambios son solo visuales. Para persistir, edita <code>config.json → escalation.ladder</code>.</div>
+  </div>
+
+  <div>
+    <div class="section-title">3 · Efectividad por tipo de nudge <span id="effSim" style="color:var(--amber);font-weight:600"></span></div>
+    <table class="alert-table" id="effTable"></table>
+  </div>
+</div>
+
 <script>
 const REPO="https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
 const TZ="America/Bogota";
@@ -194,6 +244,7 @@ const SEV_RANK={alta:3,media:2,baja:1};
 let CFG=null,SCHOOLS={},DEVICES={};            // DEVICES[alias]={aula,schoolId}
 let _allRows=[],_byAlias={},_flags={},_latest={},_weekDays=[],_dailyWh=[];
 let _map,_mapInit=false,_markers={},_selSchool=null,_selAula=null;
+let _ladder=[],_alertsSim=false;
 const NOW=new Date();
 
 const getDays=n=>Array.from({length:n},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toLocaleDateString('en-CA',{timeZone:TZ});});
@@ -221,6 +272,11 @@ function tailStreak(rows,pred){let i=rows.length-1;const out=[];while(i>=0&&pred
 const fetchCSV=date=>new Promise(res=>{
   Papa.parse(`${REPO}/energy_logs/emporia/${date}.csv`,{download:true,header:true,
     complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp&&typeof x.timestamp==="string")),
+    error:()=>res([])});
+});
+const fetchAlerts=date=>new Promise(res=>{
+  Papa.parse(`${REPO}/alerts_log/${date}.csv`,{download:true,header:true,
+    complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp_detected)),
     error:()=>res([])});
 });
 
@@ -293,7 +349,12 @@ async function main(){
     return +Object.values(byA).reduce((s,w)=>s+w,0).toFixed(1);
   });
 
+  _ladder=((CFG.escalation||{}).ladder)||[];
+  const alertFrames=await Promise.all(days7.map(fetchAlerts));
+  const alertRows=alertFrames.flat();
+
   renderKpis();renderSchoolCards();renderFlags();renderTrend();renderFlagLegend();renderMapAulaList();
+  renderAlertsTab(alertRows);
 }
 
 function renderKpis(){
@@ -476,6 +537,123 @@ function initMap(){
     m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">${data.aulas.length} aula(s) Emporia</div>${rows}</div>`);
     _markers[sid]=m;
   });
+}
+
+// ---- ALERTAS ----
+const CHANNELS=[{key:"sms",label:"SMS"},{key:"whatsapp",label:"WhatsApp"},{key:"ivr",label:"Llamada IVR"},{key:"visit",label:"Visita"},{key:"none",label:"—"}];
+const chanLabel=k=>{const c=CHANNELS.find(c=>c.key===k);return c?c.label:(k||"—");};
+
+function normalizeAlert(r){
+  const d=s=>s?new Date(s):null;
+  const resolved=String(r.resolved).toLowerCase()==="true"||r.resolved==="1";
+  return {
+    detected:d(r.timestamp_detected),nudge_sent:d(r.timestamp_nudge_sent),resolved_at:d(r.timestamp_resolved),
+    school_id:r.school_id,aula:r.aula,flag_type:r.flag_type,
+    channel:r.nudge_channel||null,nudge_status:r.nudge_status||"pending",response_ivr:r.response_ivr||"",
+    resolved,resolution_hours:(r.resolution_hours!==""&&r.resolution_hours!=null)?parseFloat(r.resolution_hours):null,
+  };
+}
+function recommendedStep(hours){
+  for(const s of _ladder){if(hours>=s.min_hours&&(s.max_hours==null||hours<s.max_hours))return s;}
+  return _ladder.length?_ladder[_ladder.length-1]:{action:"—",channel:"none",min_hours:0};
+}
+// Construye registros simulados cuando alerts_log está vacío (para mostrar la estructura).
+function simulateAlerts(){
+  const recs=[],h=n=>new Date(NOW.getTime()-n*3600e3);
+  Object.entries(_flags).forEach(([a,fs])=>fs.forEach(f=>{
+    if(!f.start)return;const dev=DEVICES[a];if(!dev)return;
+    const hours=(NOW-new Date(f.start))/3600e3,step=recommendedStep(hours);
+    const nudged=step.channel&&step.channel!=="none";
+    recs.push({detected:new Date(f.start),nudge_sent:nudged?new Date(new Date(f.start).getTime()+(step.min_hours||0)*3600e3):null,
+      resolved_at:null,school_id:dev.schoolId,aula:dev.aula,flag_type:f.type,
+      channel:nudged?step.channel:null,nudge_status:nudged?"sent":"pending",response_ivr:"",resolved:false,resolution_hours:null});
+  }));
+  const demo=[
+    {det:96,nud:72,res:66,sid:"school_1",aula:"Aula 101",ft:"off",      ch:"whatsapp",ivr:"",         rs:true, rh:30},
+    {det:40,nud:24,res:26,sid:"school_1",aula:"Aula 102",ft:"no_watts", ch:"whatsapp",ivr:"",         rs:true, rh:14},
+    {det:90,nud:48,res:38,sid:"school_2",aula:"Aula 103",ft:"no_data",  ch:"ivr",     ivr:"1",        rs:true, rh:52},
+    {det:60,nud:36,res:null,sid:"school_2",aula:"Aula 103",ft:"off",    ch:"ivr",     ivr:"no_answer",rs:false,rh:null},
+    {det:120,nud:72,res:40,sid:"school_3",aula:"Aula 201",ft:"off",     ch:"visit",   ivr:"",         rs:true, rh:80},
+    {det:30,nud:24,res:null,sid:"school_1",aula:"Aula 101",ft:"no_watts",ch:"sms",    ivr:"",         rs:false,rh:null},
+    {det:50,nud:30,res:30,sid:"school_1",aula:"Aula 102",ft:"no_watts", ch:"sms",     ivr:"",         rs:true, rh:20},
+  ];
+  demo.forEach(x=>recs.push({detected:h(x.det),nudge_sent:x.nud!=null?h(x.nud):null,resolved_at:x.res!=null?h(x.res):null,
+    school_id:x.sid,aula:x.aula,flag_type:x.ft,channel:x.ch,nudge_status:"sent",response_ivr:x.ivr,resolved:x.rs,resolution_hours:x.rh}));
+  return recs;
+}
+
+function renderAlertsTab(alertRows){
+  let records=(alertRows||[]).map(normalizeAlert);
+  _alertsSim=false;
+  if(!records.length){records=simulateAlerts();_alertsSim=true;}
+  document.getElementById("simBanner").style.display=_alertsSim?"block":"none";
+  document.getElementById("effSim").textContent=_alertsSim?"· datos simulados":"";
+  renderAlertPipeline(records);
+  renderDecisionFlow();
+  renderEffectiveness(records);
+}
+
+function renderAlertPipeline(records){
+  const active=records.filter(r=>!r.resolved).sort((a,b)=>a.detected-b.detected);
+  const list=document.getElementById("pipeList");
+  if(!active.length){list.innerHTML='<div style="color:var(--hint);font-size:13px;padding:8px">Sin alertas activas.</div>';return;}
+  const dot=(state,icon)=>`<div class="pipe-dot ${state}">${state==="done"?"✓":state==="failed"?"✕":icon}</div>`;
+  list.innerHTML=active.map(r=>{
+    const def=FLAG_DEFS[r.flag_type]||{emoji:"⚪",label:r.flag_type,sev:"baja"};
+    const sch=SCHOOLS[r.school_id];
+    const step=recommendedStep((NOW-r.detected)/3600e3);
+    const detState=r.nudge_sent?"done":"active";
+    const nudgeState=r.nudge_status==="failed"?"failed":(r.nudge_sent?"done":"pending");
+    const resState=r.resolved?"done":(r.nudge_sent?"active":"pending");
+    const tDet=humanDur((r.nudge_sent||NOW)-r.detected);
+    const tNudge=r.nudge_sent?chanLabel(r.channel)+" · "+humanDur((r.resolved_at||NOW)-r.nudge_sent):(nudgeState==="failed"?"falló":"—");
+    const tRes=r.resolved?("✓ "+(r.resolution_hours!=null?r.resolution_hours+"h":"")):"pendiente";
+    const chan=r.channel&&r.channel!=="none"?` <span class="chan-badge">${chanLabel(r.channel)}</span>`:"";
+    return `<div class="pipe-card ${def.sev}">
+      <div class="pipe-head">
+        <div><div class="pipe-title">${def.emoji} ${def.label}</div>
+          <div class="pipe-loc">${r.aula} · ${sch?sch.name:"—"} · detectado ${fmtTime(r.detected)}</div></div>
+        <div class="pipe-action">Acción sugerida: ${step.action}${chan}</div>
+      </div>
+      <div class="pipe-stages">
+        <div class="pipe-stage">${dot(detState,"1")}<div class="pipe-lbl">Detectado</div><div class="pipe-time">${tDet}</div></div>
+        <div class="pipe-conn ${r.nudge_sent?"done":""}"></div>
+        <div class="pipe-stage">${dot(nudgeState,"2")}<div class="pipe-lbl">Nudge enviado</div><div class="pipe-time">${tNudge}</div></div>
+        <div class="pipe-conn ${r.resolved?"done":""}"></div>
+        <div class="pipe-stage">${dot(resState,"3")}<div class="pipe-lbl">Resuelto</div><div class="pipe-time">${tRes}</div></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderDecisionFlow(){
+  const t=document.getElementById("decisionTable");
+  if(!_ladder.length){t.innerHTML='<tbody><tr><td>Sin escalera en config.json (escalation.ladder).</td></tr></tbody>';return;}
+  t.innerHTML=`<thead><tr><th>Tiempo desde detección</th><th>Acción</th><th>Canal</th></tr></thead><tbody>`+
+    _ladder.map(s=>`<tr>
+      <td>${s.label||((s.min_hours||0)+"–"+(s.max_hours==null?"∞":s.max_hours)+"h")}</td>
+      <td contenteditable="true">${s.action||"—"}</td>
+      <td contenteditable="true">${chanLabel(s.channel)}</td>
+    </tr>`).join("")+`</tbody>`;
+}
+
+function renderEffectiveness(records){
+  const sent=records.filter(r=>r.nudge_status==="sent"&&r.channel);
+  let body="";
+  CHANNELS.filter(c=>c.key!=="none").forEach(c=>{
+    const rs=sent.filter(r=>r.channel===c.key),resolved=rs.filter(r=>r.resolved);
+    const pct=rs.length?Math.round(resolved.length/rs.length*100):null;
+    const avg=resolved.length?(resolved.reduce((s,r)=>s+(r.resolution_hours||0),0)/resolved.length):null;
+    const color=pct==null?"var(--hint)":pct>=70?"var(--green-mid)":pct>=40?"var(--amber-mid)":"var(--red-mid)";
+    body+=`<tr>
+      <td>${c.label}</td>
+      <td class="num">${rs.length||"—"}</td>
+      <td class="num">${rs.length?resolved.length:"—"}</td>
+      <td class="num" style="color:${color};font-weight:500">${pct==null?"—":pct+"%"}</td>
+      <td class="num">${avg==null?"—":avg.toFixed(1)+" h"}</td>
+    </tr>`;
+  });
+  document.getElementById("effTable").innerHTML=`<thead><tr><th>Canal de nudge</th><th class="num">Enviados</th><th class="num">Resueltos</th><th class="num">% Resueltos</th><th class="num">Tiempo prom. resolución</th></tr></thead><tbody>${body}</tbody>`;
 }
 
 function switchTab(id,el){

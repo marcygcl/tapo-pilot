@@ -54,5 +54,14 @@
       {"alias": "three", "gid": 606969, "school_id": "school_2", "aula": "Aula 103"},
       {"alias": "four",  "gid": 606991, "school_id": "school_3", "aula": "Aula 201"}
     ]
+  },
+  "escalation": {
+    "_nota": "Umbrales de escalamiento por horas desde la detección del flag. El dashboard (tab Alertas) lee esta escalera; editar aquí para ajustar el flujo de nudges.",
+    "ladder": [
+      {"label": "< 24h",   "min_hours": 0,  "max_hours": 24,   "action": "Monitorear",  "channel": "none"},
+      {"label": "24–48h",  "min_hours": 24, "max_hours": 48,   "action": "WhatsApp",     "channel": "whatsapp"},
+      {"label": "48–72h",  "min_hours": 48, "max_hours": 72,   "action": "Llamada IVR",  "channel": "ivr"},
+      {"label": "> 72h",   "min_hours": 72, "max_hours": null, "action": "Visita",       "channel": "visit"}
+    ]
   }
 }
