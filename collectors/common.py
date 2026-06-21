@@ -31,6 +31,8 @@ TAPO_EMAIL = os.getenv("TAPO_EMAIL")
 TAPO_PASSWORD = os.getenv("TAPO_PASSWORD")
 EMPORIA_EMAIL = os.getenv("EMPORIA_EMAIL")
 EMPORIA_PASSWORD = os.getenv("EMPORIA_PASSWORD")
+SHELLY_SERVER = os.getenv("SHELLY_SERVER")
+SHELLY_AUTH_KEY = os.getenv("SHELLY_AUTH_KEY")
 
 # Rangos de intensidad del filtro Sqair (watts) -> etiqueta cualitativa.
 SQAIR_INTENSITY = {"off": (0, 2), "low": (3, 10), "medium": (11, 28), "high": (29, 42)}
@@ -78,3 +80,11 @@ for school in CONFIG["schools"]:
 EMPORIA_DEVICES = {}
 for dev in CONFIG.get("emporia", {}).get("devices", []):
     EMPORIA_DEVICES[dev["gid"]] = dev
+
+# Dispositivos Shelly declarados en config.json (indexados por id).
+SHELLY_DEVICES = {}
+for dev in CONFIG.get("shelly", {}).get("devices", []):
+    SHELLY_DEVICES[dev["id"]] = dev
+
+# Nombre de colegio por id (para resolver 'colegio' a partir de school_id).
+SCHOOLS_BY_ID = {s["id"]: s["name"] for s in CONFIG["schools"]}

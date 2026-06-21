@@ -1,4 +1,4 @@
-name: Collect plug data
+name: Collect Shelly data
 
 on:
   schedule:
@@ -18,21 +18,7 @@ jobs:
 
       - run: uv sync
 
-      # El collector de Tapo NO corre en CI: usa la API local de los plugs
-      # (red Wi-Fi del colegio) y GitHub Actions no tiene acceso a esa red.
-      # Se ejecuta localmente con: uv run python collectors/tapo/collect.py
-
-      - name: Run Emporia collector
-        env:
-          EMPORIA_EMAIL:    ${{ secrets.EMPORIA_EMAIL }}
-          EMPORIA_PASSWORD: ${{ secrets.EMPORIA_PASSWORD }}
-          TIMEZONE:         America/Bogota
-          SCHOOL_START:     "07:00"
-          SCHOOL_END:       "16:00"
-        run: uv run python collectors/emporia/collect.py --once
-
       - name: Run Shelly collector
-        continue-on-error: true
         env:
           SHELLY_SERVER:   ${{ secrets.SHELLY_SERVER }}
           SHELLY_AUTH_KEY: ${{ secrets.SHELLY_AUTH_KEY }}
@@ -51,5 +37,5 @@ jobs:
           git pull --rebase
           git stash pop
           git add energy_logs/
-          git commit -m "data: $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git commit -m "data(shelly): $(date -u +'%Y-%m-%d %H:%M') UTC"
           git push

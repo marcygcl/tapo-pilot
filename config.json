@@ -55,6 +55,15 @@
       {"alias": "four",  "gid": 606991, "school_id": "school_3", "aula": "Aula 201"}
     ]
   },
+  "shelly": {
+    "server_env": "SHELLY_SERVER",
+    "auth_key_env": "SHELLY_AUTH_KEY",
+    "_nota": "school_id y aula son PLACEHOLDER — ajustar a la asignación real de cada Shelly.",
+    "devices": [
+      {"alias": "shelly_1", "id": "acebe6f4b44c", "school_id": "school_2", "aula": "Aula 105"},
+      {"alias": "shelly_0", "id": "acebe6f599cc", "school_id": "school_3", "aula": "Aula 106"}
+    ]
+  },
   "escalation": {
     "_nota": "Umbrales de escalamiento por horas desde la detección del flag. El dashboard (tab Alertas) lee esta escalera; editar aquí para ajustar el flujo de nudges.",
     "ladder": [
