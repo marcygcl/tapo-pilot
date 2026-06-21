@@ -58,10 +58,10 @@
   "shelly": {
     "server_env": "SHELLY_SERVER",
     "auth_key_env": "SHELLY_AUTH_KEY",
-    "_nota": "school_id y aula son PLACEHOLDER — ajustar a la asignación real de cada Shelly.",
+    "_nota": "school_id, aula y lat/lng son PLACEHOLDER — ajustar a la ubicación real de cada Shelly.",
     "devices": [
-      {"alias": "shelly_1", "id": "acebe6f4b44c", "school_id": "school_2", "aula": "Aula 105"},
-      {"alias": "shelly_0", "id": "acebe6f599cc", "school_id": "school_3", "aula": "Aula 106"}
+      {"alias": "shelly_1", "id": "acebe6f4b44c", "school_id": "school_2", "aula": "Aula 105", "lat": 4.6614, "lng": -74.0570},
+      {"alias": "shelly_0", "id": "acebe6f599cc", "school_id": "school_3", "aula": "Aula 106", "lat": 4.7010, "lng": -74.0720}
     ]
   },
   "escalation": {

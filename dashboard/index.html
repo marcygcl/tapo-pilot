@@ -116,6 +116,7 @@
     .pipe-conn{height:2px;background:var(--border);flex:1;margin-top:13px;min-width:18px;}
     .pipe-conn.done{background:var(--green-mid);}
     .chan-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue);}
+    .tech-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em;color:#fff;}
     @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}.pipe-stage{width:90px;}}
   </style>
 </head>
@@ -144,6 +145,12 @@
     <div class="section-title" id="detailTitle">Detalle de aulas</div>
     <div class="aula-detail" id="aulaDetail"></div>
   </div>
+  <div id="shellySection" style="display:none">
+    <div class="section-title">Shelly — dispositivos</div>
+    <div class="kpi-grid" id="shellyKpiGrid"></div>
+    <div class="school-cards" id="shellyCards" style="margin-top:14px;"></div>
+    <div class="aula-detail" id="shellyDetail" style="display:none;margin-top:12px;"></div>
+  </div>
   <div id="flagSection" style="display:none">
     <div class="section-title">Flags activos</div>
     <div class="flag-list" id="flagList"></div>
@@ -164,11 +171,13 @@
   <div class="map-wrap">
     <div id="map"></div>
     <div class="map-legend">
-      <b>Semáforo por colegio</b>
+      <b>Semáforo (color = severidad)</b>
       <div class="leg-row"><span class="dot" style="background:#639922"></span>Sin flags</div>
       <div class="leg-row"><span class="dot" style="background:#ef9f27"></span>Flag media/baja</div>
       <div class="leg-row"><span class="dot" style="background:#e24b4a"></span>Flag alta — visita</div>
-      <div class="leg-row"><span class="dot" style="background:#888780"></span>Sin datos</div>
+      <div style="border-top:.5px solid var(--border);margin:7px 0 5px;"></div>
+      <div class="leg-row"><span style="width:11px;height:11px;border-radius:50%;background:#888;display:inline-block;"></span>● Colegio (Emporia)</div>
+      <div class="leg-row"><span style="width:11px;height:11px;border-radius:3px;background:#888;display:inline-block;"></span>■ Shelly (por dispositivo)</div>
     </div>
   </div>
   <div class="map-side">
@@ -240,6 +249,10 @@ const FLAG_DEFS={
   low_only:{emoji:"🟡",label:"Solo intensidad baja (debería estar en media/alta)",sev:"baja",color:"#d6b400"},
 };
 const SEV_RANK={alta:3,media:2,baja:1};
+// Tecnologías soportadas: color/etiqueta para badges y pines del mapa.
+const TECHS={emporia:{label:"Emporia",color:"#639922"},shelly:{label:"Shelly",color:"#e8830c"}};
+const techBadge=t=>`<span class="tech-badge" style="background:${(TECHS[t]||{}).color||'#888'}">${(TECHS[t]||{label:t}).label}</span>`;
+const aliasesByTech=t=>Object.keys(DEVICES).filter(a=>DEVICES[a].tech===t);
 
 let CFG=null,SCHOOLS={},DEVICES={};            // DEVICES[alias]={aula,schoolId}
 let _allRows=[],_byAlias={},_flags={},_latest={},_weekDays=[],_dailyWh=[];
@@ -269,8 +282,8 @@ function schoolDaysSpan(a,b){
 // Racha contigua al final de la serie que cumple pred.
 function tailStreak(rows,pred){let i=rows.length-1;const out=[];while(i>=0&&pred(rows[i])){out.unshift(rows[i]);i--;}return out;}
 
-const fetchCSV=date=>new Promise(res=>{
-  Papa.parse(`${REPO}/energy_logs/emporia/${date}.csv`,{download:true,header:true,
+const fetchCSV=(tech,date)=>new Promise(res=>{
+  Papa.parse(`${REPO}/energy_logs/${tech}/${date}.csv`,{download:true,header:true,
     complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp&&typeof x.timestamp==="string")),
     error:()=>res([])});
 });
@@ -324,27 +337,36 @@ async function main(){
 
   for(const s of (CFG.schools||[]))
     SCHOOLS[s.id]={name:s.name,lat:s.lat,lng:s.lng,aulas:[]};
+  // Emporia: cada dispositivo se agrupa bajo su colegio (pin de colegio).
   for(const d of ((CFG.emporia||{}).devices||[])){
-    DEVICES[d.alias]={aula:d.aula||d.alias,schoolId:d.school_id};
+    DEVICES[d.alias]={tech:"emporia",aula:d.aula||d.alias,schoolId:d.school_id};
     if(d.school_id&&SCHOOLS[d.school_id])SCHOOLS[d.school_id].aulas.push(d.alias);
+  }
+  // Shelly: cada dispositivo tiene su propia ubicación (pin individual).
+  for(const d of ((CFG.shelly||{}).devices||[])){
+    DEVICES[d.alias]={tech:"shelly",aula:d.aula||d.alias,schoolId:d.school_id,id:d.id,lat:d.lat,lng:d.lng};
   }
 
   const days7=getDays(7);_weekDays=getWeek();
-  const frames=await Promise.all(days7.map(fetchCSV));
-  _allRows=frames.flat().map(r=>({
+  const mapRow=r=>({
     alias:r.alias,t:new Date(r.timestamp),
     is_on:r.is_on===""||r.is_on==null?null:parseInt(r.is_on),
     watts:num(r.watts),today_wh:num(r.today_wh),
     school_hours:parseInt(r.school_hours)||0,
-  })).sort((a,b)=>a.t-b.t);
+  });
+  const empFrames=await Promise.all(days7.map(d=>fetchCSV("emporia",d)));
+  const sheFrames=await Promise.all(days7.map(d=>fetchCSV("shelly",d)));
+  _allRows=[...empFrames.flat(),...sheFrames.flat()].map(mapRow).sort((a,b)=>a.t-b.t);
 
+  // El motor de flags corre IGUAL para todos los dispositivos (Emporia y Shelly).
   Object.keys(DEVICES).forEach(a=>{
     _byAlias[a]=_allRows.filter(r=>r.alias===a);
     _flags[a]=computeFlags(_byAlias[a]);
     _latest[a]=_byAlias[a].length?_byAlias[a][_byAlias[a].length-1]:null;
   });
 
-  _dailyWh=frames.map(fr=>{
+  // Consumo diario (trend) = Emporia (el panel de tendencia es del flujo Emporia).
+  _dailyWh=empFrames.map(fr=>{
     const byA={};fr.forEach(r=>{const w=num(r.today_wh);if(!(r.alias in byA)||w>byA[r.alias])byA[r.alias]=w;});
     return +Object.values(byA).reduce((s,w)=>s+w,0).toFixed(1);
   });
@@ -353,30 +375,71 @@ async function main(){
   const alertFrames=await Promise.all(days7.map(fetchAlerts));
   const alertRows=alertFrames.flat();
 
-  renderKpis();renderSchoolCards();renderFlags();renderTrend();renderFlagLegend();renderMapAulaList();
+  renderKpis();renderSchoolCards();renderShellySection();renderFlags();renderTrend();renderFlagLegend();renderMapAulaList();
   renderAlertsTab(alertRows);
 }
 
-function renderKpis(){
-  const aliases=Object.keys(DEVICES);
+function kpiGridHtml(aliases,unit){
   const active=aliases.filter(a=>_latest[a]&&_latest[a].is_on===1).length;
-  const totalFlags=Object.values(_flags).reduce((s,f)=>s+f.length,0);
-  const highFlags=Object.values(_flags).flat().filter(f=>FLAG_DEFS[f.type].sev==="alta").length;
+  const totalFlags=aliases.reduce((s,a)=>s+(_flags[a]||[]).length,0);
+  const highFlags=aliases.flatMap(a=>_flags[a]||[]).filter(f=>FLAG_DEFS[f.type].sev==="alta").length;
   const wh=aliases.reduce((s,a)=>s+(_latest[a]?_latest[a].today_wh:0),0).toFixed(0);
-  const lastTs=_allRows.length?_allRows[_allRows.length-1].t:null;
+  return `
+    <div class="kpi"><div class="kpi-label">${unit} activos ahora</div><div class="kpi-value">${active}<span style="font-size:16px;color:var(--muted)">/${aliases.length}</span></div><div class="kpi-sub">encendido</div></div>
+    <div class="kpi"><div class="kpi-label">Flags activos</div><div class="kpi-value" style="color:${totalFlags?"var(--amber-mid)":"var(--green-mid)"}">${totalFlags}</div><div class="kpi-sub">${highFlags} de severidad alta</div></div>
+    <div class="kpi"><div class="kpi-label">${unit} sin novedad</div><div class="kpi-value">${aliases.filter(a=>!(_flags[a]||[]).length).length}</div><div class="kpi-sub">de ${aliases.length} monitoreados</div></div>
+    <div class="kpi"><div class="kpi-label">Consumo hoy</div><div class="kpi-value">${wh}<span style="font-size:16px;color:var(--muted)"> Wh</span></div><div class="kpi-sub">todos</div></div>`;
+}
 
-  document.getElementById("subtitle").textContent=`${aliases.length} aulas Emporia · monitoreo 24/7 · última lectura: ${lastTs?fmtTime(lastTs):"—"}`;
-  document.getElementById("active-badge").textContent=`${active}/${aliases.length} activos`;
+function renderKpis(){
+  const emp=aliasesByTech("emporia"),all=Object.keys(DEVICES);
+  const active=all.filter(a=>_latest[a]&&_latest[a].is_on===1).length;
+  const totalFlags=all.reduce((s,a)=>s+(_flags[a]||[]).length,0);
+  const highFlags=all.flatMap(a=>_flags[a]||[]).filter(f=>FLAG_DEFS[f.type].sev==="alta").length;
+  const lastTs=_allRows.length?_allRows[_allRows.length-1].t:null;
+  const she=aliasesByTech("shelly");
+
+  document.getElementById("subtitle").textContent=`${emp.length} Emporia · ${she.length} Shelly · monitoreo 24/7 · última lectura: ${lastTs?fmtTime(lastTs):"—"}`;
+  document.getElementById("active-badge").textContent=`${active}/${all.length} activos`;
   const fb=document.getElementById("flag-badge");
   fb.textContent=totalFlags?`${totalFlags} flag${totalFlags>1?"s":""}`:"Sin flags";
   fb.className=`pill ${highFlags?"pill-red":totalFlags?"pill-blue":"pill-green"}`;
   document.getElementById("last-sync").textContent=lastTs?`Última: ${fmtTime(lastTs)}`:"Sin lecturas";
 
-  document.getElementById("kpiGrid").innerHTML=`
-    <div class="kpi"><div class="kpi-label">Aulas activas ahora</div><div class="kpi-value">${active}<span style="font-size:16px;color:var(--muted)">/${aliases.length}</span></div><div class="kpi-sub">plug encendido</div></div>
-    <div class="kpi"><div class="kpi-label">Flags activos</div><div class="kpi-value" style="color:${totalFlags?"var(--amber-mid)":"var(--green-mid)"}">${totalFlags}</div><div class="kpi-sub">${highFlags} de severidad alta</div></div>
-    <div class="kpi"><div class="kpi-label">Aulas sin novedad</div><div class="kpi-value">${aliases.filter(a=>!(_flags[a]||[]).length).length}</div><div class="kpi-sub">de ${aliases.length} monitoreadas</div></div>
-    <div class="kpi"><div class="kpi-label">Consumo hoy</div><div class="kpi-value">${wh}<span style="font-size:16px;color:var(--muted)"> Wh</span></div><div class="kpi-sub">todas las aulas</div></div>`;
+  document.getElementById("kpiGrid").innerHTML=kpiGridHtml(emp,"Aulas");
+}
+
+function renderShellySection(){
+  const she=aliasesByTech("shelly");
+  const sec=document.getElementById("shellySection");
+  if(!she.length){sec.style.display="none";return;}
+  sec.style.display="block";
+  document.getElementById("shellyKpiGrid").innerHTML=kpiGridHtml(she,"Dispositivos");
+
+  const cards=document.getElementById("shellyCards");
+  cards.innerHTML=she.map(a=>{
+    const dev=DEVICES[a],r=_latest[a],flags=_flags[a]||[];
+    const sev=worstSev(flags),color=semColor(sev),sevName=sev>=3?"alta":sev>=1?"media":"";
+    const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join(" ");
+    const sch=SCHOOLS[dev.schoolId];
+    return `<div class="school-card ${sevName?"flag-"+sevName:""} ${_selAula===a?"sel":""}" data-aula="${a}">
+      <div class="school-sem" style="background:${color}"></div>
+      <div class="school-name">${dev.aula} ${techBadge("shelly")}</div>
+      <div class="school-meta">${sch?sch.name:"—"} · id ${dev.id||a}</div>
+      <div class="school-stats">
+        <div class="school-stat">Estado <b style="color:${r&&r.is_on===1?"var(--green-mid)":"var(--red-mid)"}">${r?(r.is_on===1?"ON":"OFF"):"—"}</b></div>
+        <div class="school-stat">Watts <b>${r?r.watts.toFixed(1):"—"}</b></div>
+        <div class="school-stat">Wh hoy <b>${r?r.today_wh.toFixed(1):"—"}</b></div>
+      </div>
+      <div class="school-flags">${emojis||'<span style="color:var(--green-mid);font-size:11px;letter-spacing:0">● sin novedad</span>'}</div>`;
+  }).join("");
+  cards.querySelectorAll(".school-card").forEach(c=>c.addEventListener("click",()=>{
+    _selAula=c.dataset.aula;renderShellySection();
+    const box=document.getElementById("shellyDetail");box.style.display="block";
+    renderTimeline("shellyDetail",_selAula);
+  }));
+  const box=document.getElementById("shellyDetail");
+  if(_selAula&&DEVICES[_selAula]&&DEVICES[_selAula].tech==="shelly"){box.style.display="block";renderTimeline("shellyDetail",_selAula);}
 }
 
 function renderSchoolCards(){
@@ -468,7 +531,7 @@ function renderFlags(){
       <div class="flag-emoji">${def.emoji}</div>
       <div class="flag-body">
         <div class="flag-title">${def.label}</div>
-        <div class="flag-loc">${dev.aula} · ${sch?sch.name:"—"}</div>
+        <div class="flag-loc">${techBadge(dev.tech)} ${dev.aula} · ${sch?sch.name:"—"}</div>
       </div>
       <div class="flag-meta">
         <div class="flag-metric">Inicio<b>${fmtTime(f.start)}</b></div>
@@ -505,7 +568,7 @@ function renderMapAulaList(){
     const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join("");
     return `<div class="aula-row" data-aula="${a}">
       <span class="aula-sem" style="background:${color}"></span>
-      <div class="aula-info"><div class="aula-name">${dev.aula}</div>
+      <div class="aula-info"><div class="aula-name">${dev.aula} ${techBadge(dev.tech)}</div>
         <div class="aula-sub">${SCHOOLS[dev.schoolId]?SCHOOLS[dev.schoolId].name:"—"}</div></div>
       <div class="aula-flags">${emojis}</div>
       <div class="aula-w" style="color:${on?"var(--green-mid)":"var(--red-mid)"}">${w}</div>
@@ -514,8 +577,11 @@ function renderMapAulaList(){
   list.querySelectorAll(".aula-row").forEach(row=>row.addEventListener("click",()=>{
     const a=row.dataset.aula;_selAula=a;
     list.querySelectorAll(".aula-row").forEach(x=>x.classList.toggle("sel",x.dataset.aula===a));
-    const dev=DEVICES[a],sch=SCHOOLS[dev.schoolId];
-    if(_map&&sch){_map.setView([sch.lat,sch.lng],15);if(_markers[dev.schoolId])_markers[dev.schoolId].openPopup();}
+    const dev=DEVICES[a];
+    if(_map){
+      if(dev.tech==="shelly"&&dev.lat!=null){_map.setView([dev.lat,dev.lng],15);const m=_markers["shelly:"+a];if(m)m.openPopup();}
+      else{const sch=SCHOOLS[dev.schoolId];if(sch){_map.setView([sch.lat,sch.lng],15);if(_markers[dev.schoolId])_markers[dev.schoolId].openPopup();}}
+    }
     document.getElementById("mapTlSection").style.display="block";
     renderTimeline("mapTlGrid",a);
   }));
@@ -537,18 +603,38 @@ function initMap(){
     m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">${data.aulas.length} aula(s) Emporia</div>${rows}</div>`);
     _markers[sid]=m;
   });
+  // Pines Shelly: cuadrado con borde naranja + "S" (distinto de los círculos de colegio).
+  aliasesByTech("shelly").forEach(a=>{
+    const dev=DEVICES[a];if(dev.lat==null)return;
+    const flags=_flags[a]||[],sev=worstSev(flags),color=semColor(sev),r=_latest[a];
+    const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join("")||"●";
+    const icon=L.divIcon({html:`<div style="width:28px;height:28px;border-radius:7px;background:${color};border:2.5px solid ${TECHS.shelly.color};box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;">S</div>`,className:"",iconSize:[28,28],iconAnchor:[14,14]});
+    const m=L.marker([dev.lat,dev.lng],{icon}).addTo(_map);
+    const sch=SCHOOLS[dev.schoolId];
+    m.bindPopup(`<div style="min-width:160px;"><strong style="font-size:13px;">${dev.aula}</strong> <span style="font-size:9px;background:${TECHS.shelly.color};color:#fff;padding:1px 6px;border-radius:7px;">SHELLY</span><div style="font-size:10px;color:#888;margin:2px 0 6px;">${sch?sch.name:"—"} · ${r?(r.is_on===1?"ON":"OFF")+" · "+r.watts.toFixed(1)+"W":"sin datos"}</div><div style="font-size:11px;">${emojis}</div></div>`);
+    _markers["shelly:"+a]=m;
+  });
 }
 
 // ---- ALERTAS ----
 const CHANNELS=[{key:"sms",label:"SMS"},{key:"whatsapp",label:"WhatsApp"},{key:"ivr",label:"Llamada IVR"},{key:"visit",label:"Visita"},{key:"none",label:"—"}];
 const chanLabel=k=>{const c=CHANNELS.find(c=>c.key===k);return c?c.label:(k||"—");};
 
+// Resuelve {tech, alias} de un dispositivo a partir de su aula (y colegio si ayuda).
+function inferDevice(aula,school_id){
+  let hit=Object.entries(DEVICES).find(([a,d])=>d.aula===aula&&(!school_id||d.schoolId===school_id));
+  if(!hit)hit=Object.entries(DEVICES).find(([a,d])=>d.aula===aula);
+  return hit?{alias:hit[0],tech:hit[1].tech}:{alias:null,tech:null};
+}
 function normalizeAlert(r){
   const d=s=>s?new Date(s):null;
   const resolved=String(r.resolved).toLowerCase()==="true"||r.resolved==="1";
+  // tech/dispositivo: columnas explícitas si existen, si no se infieren del aula.
+  const inf=inferDevice(r.aula,r.school_id);
   return {
     detected:d(r.timestamp_detected),nudge_sent:d(r.timestamp_nudge_sent),resolved_at:d(r.timestamp_resolved),
     school_id:r.school_id,aula:r.aula,flag_type:r.flag_type,
+    tech:r.tech||inf.tech,alias:r.device||r.alias||inf.alias,
     channel:r.nudge_channel||null,nudge_status:r.nudge_status||"pending",response_ivr:r.response_ivr||"",
     resolved,resolution_hours:(r.resolution_hours!==""&&r.resolution_hours!=null)?parseFloat(r.resolution_hours):null,
   };
@@ -565,20 +651,20 @@ function simulateAlerts(){
     const hours=(NOW-new Date(f.start))/3600e3,step=recommendedStep(hours);
     const nudged=step.channel&&step.channel!=="none";
     recs.push({detected:new Date(f.start),nudge_sent:nudged?new Date(new Date(f.start).getTime()+(step.min_hours||0)*3600e3):null,
-      resolved_at:null,school_id:dev.schoolId,aula:dev.aula,flag_type:f.type,
+      resolved_at:null,school_id:dev.schoolId,aula:dev.aula,flag_type:f.type,tech:dev.tech,alias:a,
       channel:nudged?step.channel:null,nudge_status:nudged?"sent":"pending",response_ivr:"",resolved:false,resolution_hours:null});
   }));
   const demo=[
-    {det:96,nud:72,res:66,sid:"school_1",aula:"Aula 101",ft:"off",      ch:"whatsapp",ivr:"",         rs:true, rh:30},
-    {det:40,nud:24,res:26,sid:"school_1",aula:"Aula 102",ft:"no_watts", ch:"whatsapp",ivr:"",         rs:true, rh:14},
-    {det:90,nud:48,res:38,sid:"school_2",aula:"Aula 103",ft:"no_data",  ch:"ivr",     ivr:"1",        rs:true, rh:52},
-    {det:60,nud:36,res:null,sid:"school_2",aula:"Aula 103",ft:"off",    ch:"ivr",     ivr:"no_answer",rs:false,rh:null},
-    {det:120,nud:72,res:40,sid:"school_3",aula:"Aula 201",ft:"off",     ch:"visit",   ivr:"",         rs:true, rh:80},
-    {det:30,nud:24,res:null,sid:"school_1",aula:"Aula 101",ft:"no_watts",ch:"sms",    ivr:"",         rs:false,rh:null},
-    {det:50,nud:30,res:30,sid:"school_1",aula:"Aula 102",ft:"no_watts", ch:"sms",     ivr:"",         rs:true, rh:20},
+    {det:96,nud:72,res:66,sid:"school_1",aula:"Aula 101",dev:"one",     tech:"emporia",ft:"off",      ch:"whatsapp",ivr:"",         rs:true, rh:30},
+    {det:40,nud:24,res:26,sid:"school_1",aula:"Aula 102",dev:"two",     tech:"emporia",ft:"no_watts", ch:"whatsapp",ivr:"",         rs:true, rh:14},
+    {det:90,nud:48,res:38,sid:"school_2",aula:"Aula 103",dev:"three",   tech:"emporia",ft:"no_data",  ch:"ivr",     ivr:"1",        rs:true, rh:52},
+    {det:120,nud:72,res:40,sid:"school_3",aula:"Aula 201",dev:"four",   tech:"emporia",ft:"off",      ch:"visit",   ivr:"",         rs:true, rh:80},
+    {det:60,nud:36,res:null,sid:"school_2",aula:"Aula 105",dev:"shelly_1",tech:"shelly",ft:"off",     ch:"ivr",     ivr:"no_answer",rs:false,rh:null},
+    {det:30,nud:24,res:null,sid:"school_3",aula:"Aula 106",dev:"shelly_0",tech:"shelly",ft:"no_watts",ch:"sms",    ivr:"",         rs:false,rh:null},
+    {det:50,nud:30,res:30,sid:"school_3",aula:"Aula 106",dev:"shelly_0",tech:"shelly",ft:"no_watts", ch:"sms",     ivr:"",         rs:true, rh:20},
   ];
   demo.forEach(x=>recs.push({detected:h(x.det),nudge_sent:x.nud!=null?h(x.nud):null,resolved_at:x.res!=null?h(x.res):null,
-    school_id:x.sid,aula:x.aula,flag_type:x.ft,channel:x.ch,nudge_status:"sent",response_ivr:x.ivr,resolved:x.rs,resolution_hours:x.rh}));
+    school_id:x.sid,aula:x.aula,flag_type:x.ft,tech:x.tech,alias:x.dev,channel:x.ch,nudge_status:"sent",response_ivr:x.ivr,resolved:x.rs,resolution_hours:x.rh}));
   return recs;
 }
 
@@ -612,7 +698,7 @@ function renderAlertPipeline(records){
     return `<div class="pipe-card ${def.sev}">
       <div class="pipe-head">
         <div><div class="pipe-title">${def.emoji} ${def.label}</div>
-          <div class="pipe-loc">${r.aula} · ${sch?sch.name:"—"} · detectado ${fmtTime(r.detected)}</div></div>
+          <div class="pipe-loc">${r.tech?techBadge(r.tech)+" ":""}${r.alias?r.alias+" · ":""}${r.aula} · ${sch?sch.name:"—"} · detectado ${fmtTime(r.detected)}</div></div>
         <div class="pipe-action">Acción sugerida: ${step.action}${chan}</div>
       </div>
       <div class="pipe-stages">
