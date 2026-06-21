@@ -365,7 +365,7 @@ function renderKpis(){
   const wh=aliases.reduce((s,a)=>s+(_latest[a]?_latest[a].today_wh:0),0).toFixed(0);
   const lastTs=_allRows.length?_allRows[_allRows.length-1].t:null;
 
-  document.getElementById("subtitle").textContent=`${aliases.length} aulas Emporia · monitoreo 24/7 · sync cada 5 min`;
+  document.getElementById("subtitle").textContent=`${aliases.length} aulas Emporia · monitoreo 24/7 · última lectura: ${lastTs?fmtTime(lastTs):"—"}`;
   document.getElementById("active-badge").textContent=`${active}/${aliases.length} activos`;
   const fb=document.getElementById("flag-badge");
   fb.textContent=totalFlags?`${totalFlags} flag${totalFlags>1?"s":""}`:"Sin flags";

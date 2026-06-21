@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+  # Trigger externo (p.ej. cron-job.org) vía POST a /repos/{owner}/{repo}/dispatches
+  # con body {"event_type":"collect"}.
+  repository_dispatch:
+    types: [collect]
 
 jobs:
   collect:
