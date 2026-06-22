@@ -131,16 +131,14 @@
     #tab-comparacion .tbd b{color:var(--orange-mid,#e8830c);}
     #tab-comparacion code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
     #tab-aire{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:20px;}
-    #tab-aire #aireChart svg{width:100%;height:240px;display:block;}
-    #tab-aire .aire-heat svg{width:100%;height:auto;display:block;}
+    #tab-aire .aire-line svg{width:100%;height:260px;display:block;}
     #tab-aire .err{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-mid);border-radius:var(--r);padding:11px 14px;font-size:12.5px;}
     #tab-aire .err code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
     #tab-aire .aire-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);}
     #tab-aire .aire-controls label{display:flex;align-items:center;gap:5px;}
-    #tab-aire .aire-controls input[type=date],#tab-aire .aire-controls select{width:auto;}
+    #tab-aire .aire-controls input[type=date]{width:auto;}
     #tab-aire button.aire-btn{width:auto;cursor:pointer;}
-    #tab-aire .aire-heat-legend{font-size:10px;color:var(--muted);margin-top:8px;display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
-    #tab-aire .aire-heat-legend .sw{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:6px;}
+    #tab-aire .alert-table{margin-top:12px;}
     #tab-aire .cmp-legend .sw{display:inline-block;width:13px;height:10px;border-radius:2px;vertical-align:middle;margin:0 4px 0 10px;}
     @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}.pipe-stage{width:90px;}}
   </style>
@@ -303,51 +301,23 @@
   <div class="aire-controls">
     <label>Desde <input type="date" id="aireFrom" class="map-filter" onchange="loadAire()"></label>
     <label>Hasta <input type="date" id="aireTo" class="map-filter" onchange="loadAire()"></label>
-    <label>Gráfico principal
-      <select id="aireView" class="map-filter aire-btn" onchange="loadAire()">
-        <option value="24h">Mostrar 24h</option>
-        <option value="school">Solo horario escolar</option>
-      </select>
-    </label>
     <button class="map-filter aire-btn" onclick="loadAire()">Actualizar</button>
   </div>
 
   <div id="aireErr"></div>
 
-  <div>
-    <div class="section-title">Resumen (rango completo, todas las horas)</div>
-    <div class="kpi-grid" id="aireKpis"></div>
-  </div>
-
-  <div>
-    <div class="section-title" id="aireChartTitle">Serie de tiempo · PM2.5 (µg/m³)</div>
-    <div class="chart-box"><div id="aireChart"></div><div class="cmp-legend" id="aireLeg"></div></div>
-  </div>
-
   <div class="two-col">
     <div class="chart-box">
-      <div class="section-title" style="margin-bottom:10px;">Patrón horario · PM2.5 Aula 19 (con filtro)</div>
-      <div class="aire-heat" id="aireHeatPm"></div>
-      <div class="aire-heat-legend" id="aireHeatPmLeg"></div>
+      <div class="section-title" style="margin-bottom:10px;">Horario escolar (L–V 6:30–15:00)</div>
+      <div class="aire-line" id="aireChartSchool"></div>
+      <div class="cmp-legend" id="aireLegSchool"></div>
+      <table class="alert-table" id="aireStatsSchool"></table>
     </div>
     <div class="chart-box">
-      <div class="section-title" style="margin-bottom:10px;">Patrón horario · Reducción del filtro (sin − con, %)</div>
-      <div class="aire-heat" id="aireHeatDiff"></div>
-      <div class="aire-heat-legend" id="aireHeatDiffLeg"></div>
-    </div>
-  </div>
-
-  <div>
-    <div class="section-title">Estadísticas: dentro vs fuera de horario escolar (PM2.5 µg/m³)</div>
-    <div class="two-col">
-      <div class="chart-box">
-        <div class="section-title" style="margin-bottom:8px;">Horario escolar (6:30–15:00, L–V)</div>
-        <table class="alert-table" id="aireStatsSchool"></table>
-      </div>
-      <div class="chart-box">
-        <div class="section-title" style="margin-bottom:8px;">Fuera de horario</div>
-        <table class="alert-table" id="aireStatsOff"></table>
-      </div>
+      <div class="section-title" style="margin-bottom:10px;">24 horas (todas · banda gris = horario escolar)</div>
+      <div class="aire-line" id="aireChart24"></div>
+      <div class="cmp-legend" id="aireLeg24"></div>
+      <table class="alert-table" id="aireStats24"></table>
     </div>
   </div>
 </div>
@@ -1092,9 +1062,7 @@ const AIRE_SENSORS=[
   {id:AIRE_REF,label:"Aula sin filtro",color:"#e8830c"},
 ];
 const SCHOOL_MIN_START=390, SCHOOL_MIN_END=900;   // 6:30–15:00 en minutos
-const DOW_ORDER=[1,2,3,4,5,6,0];                  // columnas L→D
-const DOW_LBL=["L","M","X","J","V","S","D"];
-const DOW_NAME=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const AIRE_MAX_GAP_MS=60*60*1000;                 // corta la línea si hay un hueco > 1h (sin puentes falsos)
 let _aireTimer=null;
 const _pad=n=>String(n).padStart(2,"0");
 const _aireMean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
@@ -1109,23 +1077,6 @@ function pmColor(v){
   if(v<=35)return"var(--amber-mid)";
   if(v<=55)return"var(--orange-mid)";
   return"var(--red-mid)";
-}
-// Bandas EPA de AQI para PM2.5 (color fijo, para celdas del heatmap).
-function pmBandColor(v){
-  if(v==null)return"rgba(128,128,128,.12)";   // sin datos
-  if(v<=12)return"#9cd84e";                     // bueno
-  if(v<=35.4)return"#f5d437";                   // moderado
-  if(v<=55.4)return"#f2933c";                   // dañino (grupos sensibles)
-  if(v<=150.4)return"#e24b4a";                  // dañino
-  return"#a45ec1";                              // muy dañino
-}
-// Reducción % -> gris (sin efecto) a rojo (filtro muy efectivo).
-function diffColor(pct){
-  if(pct==null)return"rgba(128,128,128,.10)";
-  if(pct<=0)return"rgba(128,128,128,.22)";
-  const t=Math.min(pct,60)/60, a=[214,212,205], b=[226,75,74];
-  const c=a.map((x,i)=>Math.round(x+(b[i]-x)*t));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
 // Extrae la hora de pared en Bogotá directo del string ISO con offset
@@ -1149,12 +1100,13 @@ const fetchAir=date=>new Promise(res=>{
     error:()=>res([])});
 });
 
-// Serie de tiempo con banda sombreada (horario escolar) por debajo de las líneas.
-function aireChart(series,bands){
-  const el=document.getElementById("aireChart");el.innerHTML="";
-  const W=820,H=240,PL=38,PR=12,PT=12,PB=26;
+// Serie de tiempo (líneas) con banda escolar opcional. Corta la línea en huecos
+// > AIRE_MAX_GAP_MS (noches/cortes) para no dibujar puentes falsos.
+function aireChart(targetId,series,bands){
+  const el=document.getElementById(targetId);el.innerHTML="";
+  const W=560,H=260,PL=36,PR=12,PT=12,PB=26;
   const all=series.flatMap(s=>s.points);
-  if(!all.length){el.innerHTML='<svg viewBox="0 0 820 240"><text x="410" y="120" text-anchor="middle" fill="#999" font-size="13">sin datos en el rango seleccionado</text></svg>';return;}
+  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="13">sin datos en el rango seleccionado</text></svg>`;return;}
   const xs=all.map(p=>p.x),ys=all.map(p=>p.y);
   let xmin=Math.min(...xs),xmax=Math.max(...xs),ymax=Math.max(...ys,1)*1.12;
   if(xmax===xmin)xmax=xmin+1;
@@ -1170,36 +1122,13 @@ function aireChart(series,bands){
   const xlab=ms=>new Date(ms).toLocaleString('es',{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
   const xt=[xmin,(xmin+xmax)/2,xmax].map((x,i)=>`<text x="${X(x).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':i===2?'end':'middle'}" font-size="9" fill="#999">${xlab(x)}</text>`).join("");
   const lines=series.map(s=>{if(!s.points.length)return"";
-    const d=s.points.map((p,i)=>(i?"L":"M")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)).join(" ");
-    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.6"/>`;}).join("");
+    let d="",prev=null;
+    s.points.forEach(p=>{d+=(prev===null||p.x-prev>AIRE_MAX_GAP_MS?"M":"L")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)+" ";prev=p.x;});
+    return `<path d="${d.trim()}" fill="none" stroke="${s.color}" stroke-width="1.6"/>`;}).join("");
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bandRects}${grid}${lines}${xt}</svg>`;
 }
 
-// Heatmap día (L–D) × hora (0–23). valueAt(dow,hour) -> {color, title}.
-function aireHeatmap(targetId,valueAt){
-  const el=document.getElementById(targetId);el.innerHTML="";
-  const cols=7,rows=24,cw=28,ch=12,ML=26,MT=18,W=ML+cols*cw+4,H=MT+rows*ch+4;
-  let s=`<svg viewBox="0 0 ${W} ${H}">`;
-  DOW_ORDER.forEach((dw,ci)=>{s+=`<text x="${ML+ci*cw+cw/2}" y="${MT-6}" text-anchor="middle" font-size="9" fill="#999">${DOW_LBL[ci]}</text>`;});
-  for(let h=0;h<rows;h++){
-    if(h%3===0)s+=`<text x="${ML-4}" y="${MT+h*ch+ch/2+3}" text-anchor="end" font-size="8" fill="#999">${_pad(h)}h</text>`;
-    DOW_ORDER.forEach((dw,ci)=>{
-      const r=valueAt(dw,h);
-      s+=`<rect x="${ML+ci*cw}" y="${MT+h*ch}" width="${cw-1}" height="${ch-1}" fill="${r.color}"><title>${r.title}</title></rect>`;
-    });
-  }
-  el.innerHTML=s+`</svg>`;
-}
-
-// Media por celda (dow,hour) para un sensor: {"dow-hour": {s,c}}.
-function aireBuckets(rows,sid){
-  const m={};
-  rows.filter(r=>r.sid===sid).forEach(r=>{const k=r.tp.dow+"-"+r.tp.hour;(m[k]||(m[k]={s:0,c:0}));m[k].s+=r.pm25;m[k].c++;});
-  return m;
-}
-const aireBucketMean=(m,dow,h)=>{const e=m[dow+"-"+h];return e&&e.c?e.s/e.c:null;};
-
-// Tabla de estadísticas para un subconjunto de filas (promedio/mediana/min/max/n + reducción).
+// Tabla de estadísticas para un subconjunto de filas (promedio/mediana/min/max/n + diferencia).
 function aireStatsTable(rows){
   const by=AIRE_SENSORS.map(s=>{
     const pm=rows.filter(r=>r.sid===s.id).map(r=>r.pm25);
@@ -1209,8 +1138,8 @@ function aireStatsTable(rows){
   const red=(w&&o&&w.mean!=null&&o.mean!=null&&o.mean>0)?(o.mean-w.mean)/o.mean*100:null;
   const row=s=>`<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${s.color};margin-right:6px;vertical-align:middle;"></span>${s.label}</td>
     <td class="num" style="color:${pmColor(s.mean)};font-weight:500;">${af1(s.mean)}</td><td class="num">${af1(s.median)}</td><td class="num">${af1(s.min)}</td><td class="num">${af1(s.max)}</td><td class="num">${s.n}</td></tr>`;
-  const diff=(red==null)?`<tr><td colspan="6" style="color:var(--hint)">datos insuficientes para la reducción</td></tr>`:
-    `<tr><td><b>Reducción con filtro</b></td><td class="num" colspan="5"><b style="color:${red>0?'var(--green-mid)':'var(--red-mid)'}">${af1(o.mean-w.mean)} µg/m³ (${(red>0?"−":"+")+Math.abs(red).toFixed(1)}%)</b></td></tr>`;
+  const diff=(red==null)?`<tr><td colspan="6" style="color:var(--hint)">datos insuficientes para la diferencia</td></tr>`:
+    `<tr><td><b>Diferencia (sin − con)</b></td><td class="num" colspan="5"><b style="color:${red>0?'var(--green-mid)':'var(--red-mid)'}">${af1(o.mean-w.mean)} µg/m³ (${(red>0?"−":"+")+Math.abs(red).toFixed(1)}%)</b></td></tr>`;
   return `<thead><tr><th>Sensor</th><th class="num">Prom</th><th class="num">Mediana</th><th class="num">Mín</th><th class="num">Máx</th><th class="num">n</th></tr></thead><tbody>${by.map(row).join("")}${diff}</tbody>`;
 }
 
@@ -1219,7 +1148,6 @@ async function loadAire(){
   const today=new Date();
   if(!toEl.value)toEl.value=`${today.getFullYear()}-${_pad(today.getMonth()+1)}-${_pad(today.getDate())}`;
   if(!fromEl.value){const d=new Date();d.setDate(d.getDate()-6);fromEl.value=`${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`;}
-  const view=document.getElementById("aireView").value;   // "24h" | "school"
   const errEl=document.getElementById("aireErr");errEl.innerHTML="";
   document.getElementById("aireStatus").textContent="cargando…";
 
@@ -1232,64 +1160,34 @@ async function loadAire(){
   }).filter(Boolean);
 
   document.getElementById("aireStatus").textContent=`${rows.length} lecturas · ${dates.length} día(s)`;
-  const clearIds=["aireKpis","aireStatsSchool","aireStatsOff","aireHeatPm","aireHeatPmLeg","aireHeatDiff","aireHeatDiffLeg","aireLeg"];
+  const clearIds=["aireStatsSchool","aireStats24","aireLegSchool","aireLeg24"];
   if(!rows.length){
     errEl.innerHTML=`<div class="err">Sin lecturas de PurpleAir en el rango seleccionado.
       Corre el collector: <code>uv run python collectors/purpleair.py</code> (necesita <code>PURPLEAIR_API_KEY</code> en el <code>.env</code>),
       o amplía el rango de fechas.</div>`;
-    clearIds.forEach(id=>document.getElementById(id).innerHTML="");aireChart([]);return;
+    clearIds.forEach(id=>document.getElementById(id).innerHTML="");
+    aireChart("aireChartSchool",[]);aireChart("aireChart24",[]);return;
   }
 
-  // ---- KPIs (rango completo, todas las horas) ----
-  const overall=AIRE_SENSORS.map(s=>{const pm=rows.filter(r=>r.sid===s.id).map(r=>r.pm25);return {...s,mean:_aireMean(pm),median:_aireMedian(pm),n:pm.length};});
-  const wO=overall.find(s=>s.id===AIRE_FILTER),oO=overall.find(s=>s.id===AIRE_REF);
-  const redO=(wO.mean!=null&&oO.mean!=null&&oO.mean>0)?(oO.mean-wO.mean)/oO.mean*100:null;
-  const kpiSensor=s=>`<div class="kpi"><div class="kpi-label">${s.label}</div>
-    <div class="kpi-value" style="color:${pmColor(s.mean)}">${af1(s.mean)}</div>
-    <div class="kpi-sub">PM2.5 promedio µg/m³ · mediana ${af1(s.median)} · n=${s.n}</div></div>`;
-  document.getElementById("aireKpis").innerHTML=kpiSensor(wO)+kpiSensor(oO)+
-    `<div class="kpi"><div class="kpi-label">Reducción con filtro</div>
-      <div class="kpi-value" style="color:${redO!=null&&redO>0?'var(--green-mid)':'var(--red-mid)'}">${redO==null?"—":(redO>0?"−":"+")+Math.abs(redO).toFixed(0)+"%"}</div>
-      <div class="kpi-sub">promedio PM2.5: con filtro vs sin filtro</div></div>`;
+  const seriesFrom=src=>AIRE_SENSORS.map(s=>({color:s.color,points:src.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25}))}));
+  const legend=withBand=>AIRE_SENSORS.map(s=>`<span class="dot" style="background:${s.color}"></span>${s.label}`).join("")+
+    (withBand?`<span class="sw" style="background:rgba(128,128,128,.28)"></span>horario escolar`:"");
 
-  // ---- Serie de tiempo (toggle 24h / horario escolar) + banda escolar ----
-  const chartRows=view==="school"?rows.filter(isSchool):rows;
-  const chartSeries=AIRE_SENSORS.map(s=>({color:s.color,points:chartRows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25}))}));
+  // Banda escolar (6:30–15:00, L–V) para el gráfico de 24h.
   const bands=[];
-  if(view!=="school")dates.forEach(d=>{
-    const [y,mo,da]=d.split("-").map(Number);
-    const dow=new Date(Date.UTC(y,mo-1,da)).getUTCDay();
-    if(dow>=1&&dow<=5)bands.push({x0:new Date(`${d}T06:30:00-05:00`).getTime(),x1:new Date(`${d}T15:00:00-05:00`).getTime()});
-  });
-  aireChart(chartSeries,bands);
-  document.getElementById("aireChartTitle").textContent=view==="school"
-    ?"Serie de tiempo · solo horario escolar (6:30–15:00, L–V) · PM2.5 (µg/m³)"
-    :"Serie de tiempo · 24h continuas · PM2.5 (µg/m³)";
-  document.getElementById("aireLeg").innerHTML=
-    AIRE_SENSORS.map(s=>`<span class="dot" style="background:${s.color}"></span>${s.label}`).join("")+
-    (view==="school"?"":`<span class="sw" style="background:rgba(128,128,128,.28)"></span>horario escolar`);
+  dates.forEach(d=>{const [y,mo,da]=d.split("-").map(Number);const dow=new Date(Date.UTC(y,mo-1,da)).getUTCDay();
+    if(dow>=1&&dow<=5)bands.push({x0:new Date(`${d}T06:30:00-05:00`).getTime(),x1:new Date(`${d}T15:00:00-05:00`).getTime()});});
 
-  // ---- Heatmaps: PM2.5 (con filtro) y reducción % ----
-  const withB=aireBuckets(rows,AIRE_FILTER),refB=aireBuckets(rows,AIRE_REF);
-  aireHeatmap("aireHeatPm",(dow,h)=>{
-    const v=aireBucketMean(withB,dow,h);
-    return {color:pmBandColor(v),title:`${DOW_NAME[dow]} ${_pad(h)}:00 · ${v==null?"sin datos":v.toFixed(1)+" µg/m³"}`};
-  });
-  aireHeatmap("aireHeatDiff",(dow,h)=>{
-    const wv=aireBucketMean(withB,dow,h),ov=aireBucketMean(refB,dow,h);
-    if(wv==null||ov==null||ov<=0)return{color:diffColor(null),title:`${DOW_NAME[dow]} ${_pad(h)}:00 · sin datos`};
-    const pct=(ov-wv)/ov*100;
-    return{color:diffColor(pct),title:`${DOW_NAME[dow]} ${_pad(h)}:00 · ${pct>=0?"−":"+"}${Math.abs(pct).toFixed(0)}% (${ov.toFixed(1)}→${wv.toFixed(1)})`};
-  });
-  document.getElementById("aireHeatPmLeg").innerHTML=
-    `EPA:<span class="sw" style="background:#9cd84e"></span>0–12<span class="sw" style="background:#f5d437"></span>12–35<span class="sw" style="background:#f2933c"></span>35–55<span class="sw" style="background:#e24b4a"></span>55–150<span class="sw" style="background:#a45ec1"></span>150+`;
-  document.getElementById("aireHeatDiffLeg").innerHTML=
-    `Reducción:<span class="sw" style="background:${diffColor(0)}"></span>≤0%`+
-    [15,30,45,60].map(p=>`<span class="sw" style="background:${diffColor(p)}"></span>${p}%`).join("");
+  // Izquierda: solo horario escolar.
+  const schoolRows=rows.filter(isSchool);
+  aireChart("aireChartSchool",seriesFrom(schoolRows));
+  document.getElementById("aireLegSchool").innerHTML=legend(false);
+  document.getElementById("aireStatsSchool").innerHTML=aireStatsTable(schoolRows);
 
-  // ---- Stats duales: dentro vs fuera de horario escolar ----
-  document.getElementById("aireStatsSchool").innerHTML=aireStatsTable(rows.filter(isSchool));
-  document.getElementById("aireStatsOff").innerHTML=aireStatsTable(rows.filter(r=>!isSchool(r)));
+  // Derecha: 24 horas (todas) con banda escolar sombreada.
+  aireChart("aireChart24",seriesFrom(rows),bands);
+  document.getElementById("aireLeg24").innerHTML=legend(true);
+  document.getElementById("aireStats24").innerHTML=aireStatsTable(rows);
 }
 
 main().catch(e=>{document.getElementById("subtitle").textContent="Error: "+e.message;console.error(e);});
