@@ -130,6 +130,14 @@
     #tab-comparacion .tbd{border-left:3px solid var(--orange-mid,#e8830c);padding:7px 12px;margin-bottom:7px;background:var(--surface);border-radius:0 var(--r) var(--r) 0;font-size:12.5px;}
     #tab-comparacion .tbd b{color:var(--orange-mid,#e8830c);}
     #tab-comparacion code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
+    #tab-aire{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:20px;}
+    #tab-aire svg{width:100%;height:230px;display:block;}
+    #tab-aire .err{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-mid);border-radius:var(--r);padding:11px 14px;font-size:12.5px;}
+    #tab-aire .err code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
+    #tab-aire .aire-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);}
+    #tab-aire .aire-controls label{display:flex;align-items:center;gap:5px;}
+    #tab-aire .aire-controls input[type=date]{width:auto;}
+    #tab-aire button.aire-btn{width:auto;cursor:pointer;}
     @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}.pipe-stage{width:90px;}}
   </style>
 </head>
@@ -146,6 +154,7 @@
   <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
   <div class="tab" onclick="switchTab('mapa',this)">Mapa</div>
   <div class="tab" onclick="switchTab('alertas',this)">Alertas</div>
+  <div class="tab" onclick="switchTab('aire',this)">Aire</div>
   <div class="tab" onclick="switchTab('comparacion',this)">Comparación Técnica</div>
 </div>
 
@@ -281,6 +290,34 @@
   <div>
     <div class="section-title">6 · Preguntas abiertas / TODO</div>
     <div class="card" id="cmpTodo"></div>
+  </div>
+</div>
+
+<div class="panel" id="tab-aire">
+  <div style="font-size:12px;color:var(--muted);">Calidad del aire (PM2.5): <b>Aula 19 con filtro Sqair</b> vs <b>Aula sin filtro</b> (referencia). Datos del collector PurpleAir. <span id="aireStatus" style="color:var(--hint)"></span></div>
+
+  <div class="aire-controls">
+    <label>Desde <input type="date" id="aireFrom" class="map-filter"></label>
+    <label>Hasta <input type="date" id="aireTo" class="map-filter"></label>
+    <label><input type="checkbox" id="aireSchool" checked> Solo horario escolar (6:30–15:00, L–V)</label>
+    <button class="map-filter aire-btn" onclick="loadAire()">Actualizar</button>
+  </div>
+
+  <div id="aireErr"></div>
+
+  <div>
+    <div class="section-title">Resumen</div>
+    <div class="kpi-grid" id="aireKpis"></div>
+  </div>
+
+  <div>
+    <div class="section-title">PM2.5 en el tiempo (µg/m³)</div>
+    <div class="chart-box"><div id="aireChart"></div><div class="cmp-legend" id="aireLeg"></div></div>
+  </div>
+
+  <div>
+    <div class="section-title">Estadísticas (PM2.5 µg/m³)</div>
+    <table class="alert-table" id="aireStats"></table>
   </div>
 </div>
 
@@ -853,6 +890,8 @@ function switchTab(id,el){
   if(id==="mapa"&&!_mapInit){initMap();_mapInit=true;}
   if(id==="comparacion"){loadComparacion();
     if(!_cmpTimer)_cmpTimer=setInterval(()=>{if(document.getElementById("tab-comparacion").classList.contains("active"))loadComparacion();},60000);}
+  if(id==="aire"){loadAire();
+    if(!_aireTimer)_aireTimer=setInterval(()=>{if(document.getElementById("tab-aire").classList.contains("active"))loadAire();},60000);}
 }
 
 // ===================== COMPARACIÓN TÉCNICA =====================
@@ -1010,6 +1049,132 @@ function renderCmpTodo(){
       <a href="https://shelly-api-docs.shelly.cloud/cloud-control-api/communication" target="_blank">Shelly Cloud Control</a>
       <div style="margin-top:8px;color:var(--muted)"><b>Falta investigar:</b> correr test de resiliencia real (corte físico); endpoint de histórico de Shelly; dejar el benchmark ≥24h; validar sensibilidad con carga real; métrica canónica de today_wh para Shelly.</div>
     </div>`;
+}
+
+// ===================== AIRE (PurpleAir PM2.5) =====================
+// Tab independiente: lee energy_logs/purpleair/YYYY-MM-DD.csv (campos:
+// timestamp, sensor_id, sensor_name, pm25, temperature, humidity) y compara
+// el aula con filtro vs el aula sin filtro. No depende de los datos de enchufes.
+const AIRE_SENSORS=[
+  {id:308614,label:"Aula 19 (con filtro)",color:"#3b6d11"},
+  {id:308572,label:"Aula sin filtro",color:"#e8830c"},
+];
+let _aireTimer=null;
+const _pad=n=>String(n).padStart(2,"0");
+const _aireMean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const _aireMedian=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+const af1=v=>v==null?"—":(+v).toFixed(1);
+
+// PM2.5 -> color por banda (referencia EPA/OMS, µg/m³).
+function pmColor(v){
+  if(v==null)return"var(--muted)";
+  if(v<=12)return"var(--green-mid)";
+  if(v<=35)return"var(--amber-mid)";
+  if(v<=55)return"var(--orange-mid)";
+  return"var(--red-mid)";
+}
+
+// Extrae la hora de pared en Bogotá directo del string ISO con offset
+// (p.ej. "2026-06-22T08:35:12-05:00"), sin depender del huso del navegador.
+function aireParseTs(s){
+  const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s||"");
+  if(!m)return null;
+  const y=+m[1],mo=+m[2],d=+m[3],hh=+m[4],mm=+m[5];
+  const dow=new Date(Date.UTC(y,mo-1,d)).getUTCDay();   // 0=dom … 6=sáb
+  return {dow,minutes:hh*60+mm};
+}
+
+function aireDateRange(from,to){
+  const out=[];let d=new Date(from+"T12:00:00");const e=new Date(to+"T12:00:00");
+  while(d<=e){out.push(`${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`);d.setDate(d.getDate()+1);}
+  return out;
+}
+const fetchAir=date=>new Promise(res=>{
+  Papa.parse(`${REPO}/energy_logs/purpleair/${date}.csv`,{download:true,header:true,
+    complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp&&typeof x.timestamp==="string")),
+    error:()=>res([])});
+});
+
+function aireChart(series){
+  const el=document.getElementById("aireChart");el.innerHTML="";
+  const W=820,H=230,PL=38,PR=12,PT=12,PB=26;
+  const all=series.flatMap(s=>s.points);
+  if(!all.length){el.innerHTML='<svg viewBox="0 0 820 230"><text x="410" y="115" text-anchor="middle" fill="#999" font-size="13">sin datos en el rango seleccionado</text></svg>';return;}
+  const xs=all.map(p=>p.x),ys=all.map(p=>p.y);
+  let xmin=Math.min(...xs),xmax=Math.max(...xs),ymax=Math.max(...ys,1)*1.12;
+  if(xmax===xmin)xmax=xmin+1;
+  const X=x=>PL+(x-xmin)/(xmax-xmin)*(W-PL-PR),Y=y=>H-PB-(y/ymax)*(H-PB-PT);
+  const ticks=[0,ymax/2,ymax];
+  const grid=ticks.map(t=>`<line x1="${PL}" y1="${Y(t).toFixed(1)}" x2="${W-PR}" y2="${Y(t).toFixed(1)}" stroke="rgba(128,128,128,.18)"/>
+    <text x="${PL-4}" y="${(Y(t)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#999">${t.toFixed(0)}</text>`).join("");
+  const xlab=ms=>new Date(ms).toLocaleString('es',{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  const xt=[xmin,(xmin+xmax)/2,xmax].map((x,i)=>`<text x="${X(x).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':i===2?'end':'middle'}" font-size="9" fill="#999">${xlab(x)}</text>`).join("");
+  const lines=series.map(s=>{if(!s.points.length)return"";
+    const d=s.points.map((p,i)=>(i?"L":"M")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)).join(" ");
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.6"/>`;}).join("");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${lines}${xt}</svg>`;
+}
+
+async function loadAire(){
+  const fromEl=document.getElementById("aireFrom"),toEl=document.getElementById("aireTo");
+  const today=new Date();
+  if(!toEl.value)toEl.value=`${today.getFullYear()}-${_pad(today.getMonth()+1)}-${_pad(today.getDate())}`;
+  if(!fromEl.value){const d=new Date();d.setDate(d.getDate()-6);fromEl.value=`${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`;}
+  const schoolOnly=document.getElementById("aireSchool").checked;
+  const errEl=document.getElementById("aireErr");errEl.innerHTML="";
+  document.getElementById("aireStatus").textContent="cargando…";
+
+  const dates=aireDateRange(fromEl.value,toEl.value);
+  const frames=await Promise.all(dates.map(fetchAir));
+  let rows=frames.flat().map(r=>{
+    const tp=aireParseTs(r.timestamp);const v=parseFloat(r.pm25);
+    if(!tp||isNaN(v))return null;
+    return {sid:parseInt(r.sensor_id),name:r.sensor_name||"",t:new Date(r.timestamp).getTime(),pm25:v,tp};
+  }).filter(Boolean);
+  if(schoolOnly)rows=rows.filter(r=>r.tp.dow>=1&&r.tp.dow<=5&&r.tp.minutes>=390&&r.tp.minutes<=900);
+
+  document.getElementById("aireStatus").textContent=`${rows.length} lecturas · ${dates.length} día(s)`;
+  if(!rows.length){
+    errEl.innerHTML=`<div class="err">Sin lecturas de PurpleAir en el rango/horario seleccionado.
+      Corre el collector: <code>uv run python collectors/purpleair.py</code> (necesita <code>PURPLEAIR_API_KEY</code> en el <code>.env</code>),
+      o amplía el rango de fechas / desactiva el filtro de horario escolar.</div>`;
+    document.getElementById("aireKpis").innerHTML="";document.getElementById("aireStats").innerHTML="";
+    aireChart([]);document.getElementById("aireLeg").innerHTML="";return;
+  }
+
+  const bySensor=AIRE_SENSORS.map(s=>{
+    const vals=rows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t);
+    const pm=vals.map(r=>r.pm25);
+    return {...s,points:vals.map(r=>({x:r.t,y:r.pm25})),
+      mean:_aireMean(pm),median:_aireMedian(pm),min:pm.length?Math.min(...pm):null,max:pm.length?Math.max(...pm):null,n:pm.length};
+  });
+
+  // Gráfico superpuesto + leyenda.
+  aireChart(bySensor.map(s=>({color:s.color,points:s.points})));
+  document.getElementById("aireLeg").innerHTML=bySensor.map(s=>`<span class="dot" style="background:${s.color}"></span>${s.label}`).join("");
+
+  // Reducción del filtro = cuánto baja el PM2.5 del aula con filtro vs la de referencia.
+  const withS=bySensor.find(s=>s.id===308614),otherS=bySensor.find(s=>s.id===308572);
+  const redPct=(withS&&otherS&&withS.mean!=null&&otherS.mean!=null&&otherS.mean>0)?(otherS.mean-withS.mean)/otherS.mean*100:null;
+
+  // KPIs: promedio por sensor + reducción del filtro.
+  const kpiSensor=s=>`<div class="kpi"><div class="kpi-label">${s.label}</div>
+    <div class="kpi-value" style="color:${pmColor(s.mean)}">${af1(s.mean)}</div>
+    <div class="kpi-sub">PM2.5 promedio µg/m³ · mediana ${af1(s.median)} · n=${s.n}</div></div>`;
+  document.getElementById("aireKpis").innerHTML=
+    kpiSensor(withS)+kpiSensor(otherS)+
+    `<div class="kpi"><div class="kpi-label">Reducción con filtro</div>
+      <div class="kpi-value" style="color:${redPct!=null&&redPct>0?'var(--green-mid)':'var(--red-mid)'}">${redPct==null?"—":(redPct>0?"−":"+")+Math.abs(redPct).toFixed(0)+"%"}</div>
+      <div class="kpi-sub">PM2.5 del aula con filtro vs sin filtro</div></div>`;
+
+  // Tabla de estadísticas.
+  const row=s=>`<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${s.color};margin-right:6px;vertical-align:middle;"></span>${s.label}</td>
+    <td class="num">${af1(s.mean)}</td><td class="num">${af1(s.median)}</td><td class="num">${af1(s.min)}</td><td class="num">${af1(s.max)}</td><td class="num">${s.n}</td></tr>`;
+  const diffRow=(redPct==null)?"":`<tr><td><b>Diferencia (sin filtro − con filtro)</b></td>
+    <td class="num" colspan="5"><b>${af1(otherS.mean-withS.mean)} µg/m³ (${(redPct>0?"−":"+")+Math.abs(redPct).toFixed(1)}%)</b></td></tr>`;
+  document.getElementById("aireStats").innerHTML=
+    `<thead><tr><th>Sensor</th><th class="num">Promedio</th><th class="num">Mediana</th><th class="num">Mín</th><th class="num">Máx</th><th class="num">Lecturas</th></tr></thead>
+     <tbody>${bySensor.map(row).join("")}${diffRow}</tbody>`;
 }
 
 main().catch(e=>{document.getElementById("subtitle").textContent="Error: "+e.message;console.error(e);});
