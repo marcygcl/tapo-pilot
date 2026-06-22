@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calidad del aire (PM2.5) — PurpleAir</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root{--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);--text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;--green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;--amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;--orange:#9a4a06;--orange-bg:#fbe6d4;--orange-mid:#e8830c;--red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;--blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;--r:10px;}
+    @media(prefers-color-scheme:dark){:root{--bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);--text:#eeebe3;--muted:#888780;--hint:#5f5e5a;--green:#97c459;--green-bg:#27500a;--green-mid:#639922;--amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;--orange:#f0a85f;--orange-bg:#5c2f08;--orange-mid:#e8830c;--red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;--blue:#85b7eb;--blue-bg:#0c447c;--blue-mid:#378add;}}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:.5px solid var(--border);background:var(--surface);}
+    .topbar h1{font-size:15px;font-weight:500;}.topbar p{font-size:11px;color:var(--muted);margin-top:1px;}
+    .topbar a{font-size:11px;color:var(--blue);text-decoration:none;}
+    .wrap{padding:20px 24px;display:flex;flex-direction:column;gap:20px;max-width:1200px;margin:0 auto;}
+    .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    .chart-box{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px;}
+    .alert-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:12px;}
+    .alert-table th{text-align:left;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:.5px solid var(--border);background:var(--bg);}
+    .alert-table td{padding:9px 12px;border-bottom:.5px solid var(--border);}
+    .alert-table tr:last-child td{border-bottom:none;}
+    .alert-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+    .map-filter{margin-bottom:6px;padding:6px 8px;font-size:12px;border:.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);}
+    .cmp-legend{font-size:11px;color:var(--muted);margin-top:6px;}
+    .cmp-legend .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 10px;vertical-align:middle;}
+    .cmp-legend .sw{display:inline-block;width:13px;height:10px;border-radius:2px;vertical-align:middle;margin:0 4px 0 10px;}
+    .aire-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);}
+    .aire-controls label{display:flex;align-items:center;gap:5px;}
+    .aire-controls input[type=date]{width:auto;margin:0;}
+    button.aire-btn{width:auto;cursor:pointer;}
+    .aire-line svg{width:100%;height:260px;display:block;}
+    .err{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-mid);border-radius:var(--r);padding:11px 14px;font-size:12.5px;}
+    .err code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
+    @media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <h1>Calidad del aire — PM2.5</h1>
+    <p>Aula 19 con filtro Sqair vs aula sin filtro · sensores PurpleAir</p>
+  </div>
+  <a href="./">← Dashboard</a>
+</div>
+
+<div class="wrap">
+  <div style="font-size:12px;color:var(--muted);">Calidad del aire (PM2.5): <b style="color:#3b6d11">Aula 19 con filtro Sqair</b> vs <b style="color:#e8830c">Aula sin filtro</b> (referencia). Datos del collector PurpleAir. <span id="aireStatus" style="color:var(--hint)"></span></div>
+
+  <div class="aire-controls">
+    <label>Desde <input type="date" id="aireFrom" class="map-filter" onchange="loadAire()"></label>
+    <label>Hasta <input type="date" id="aireTo" class="map-filter" onchange="loadAire()"></label>
+    <button class="map-filter aire-btn" onclick="loadAire()">Actualizar</button>
+  </div>
+
+  <div id="aireErr"></div>
+
+  <div class="two-col">
+    <div class="chart-box">
+      <div class="section-title" style="margin-bottom:10px;">Horario escolar (L–V 6:30–15:00)</div>
+      <div class="aire-line" id="aireChartSchool"></div>
+      <div class="cmp-legend" id="aireLegSchool"></div>
+      <table class="alert-table" id="aireStatsSchool"></table>
+    </div>
+    <div class="chart-box">
+      <div class="section-title" style="margin-bottom:10px;">24 horas (todas · banda gris = horario escolar)</div>
+      <div class="aire-line" id="aireChart24"></div>
+      <div class="cmp-legend" id="aireLeg24"></div>
+      <table class="alert-table" id="aireStats24"></table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== AIRE (PurpleAir PM2.5) — página independiente =====================
+// Self-contained: lee energy_logs/purpleair/YYYY-MM-DD.csv desde GitHub (raw) y compara
+// el aula con filtro vs el aula sin filtro. Campos del CSV:
+// timestamp, sensor_id, sensor_name, pm25, temperature, humidity.
+const REPO="https://raw.githubusercontent.com/marcygcl/tapo-pilot/main";
+const TZ="America/Bogota";
+
+const AIRE_FILTER=308614, AIRE_REF=308572;   // sensores: con filtro (Aula 19) / sin filtro
+const AIRE_SENSORS=[
+  {id:AIRE_FILTER,label:"Aula 19 (con filtro)",color:"#3b6d11"},
+  {id:AIRE_REF,label:"Aula sin filtro",color:"#e8830c"},
+];
+const SCHOOL_MIN_START=390, SCHOOL_MIN_END=900;   // 6:30–15:00 en minutos
+const AIRE_MAX_GAP_MS=60*60*1000;                 // corta la línea si hay un hueco > 1h (sin puentes falsos)
+const _pad=n=>String(n).padStart(2,"0");
+const _aireMean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const _aireMedian=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+const af1=v=>v==null?"—":(+v).toFixed(1);
+const isSchool=r=>r.tp.dow>=1&&r.tp.dow<=5&&r.tp.minutes>=SCHOOL_MIN_START&&r.tp.minutes<=SCHOOL_MIN_END;
+
+// PM2.5 -> color por banda (referencia EPA/OMS, µg/m³).
+function pmColor(v){
+  if(v==null)return"var(--muted)";
+  if(v<=12)return"var(--green-mid)";
+  if(v<=35)return"var(--amber-mid)";
+  if(v<=55)return"var(--orange-mid)";
+  return"var(--red-mid)";
+}
+
+// Extrae la hora de pared en Bogotá directo del string ISO con offset
+// (p.ej. "2026-06-22T08:35:12-05:00"), sin depender del huso del navegador.
+function aireParseTs(s){
+  const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s||"");
+  if(!m)return null;
+  const y=+m[1],mo=+m[2],d=+m[3],hh=+m[4],mm=+m[5];
+  const dow=new Date(Date.UTC(y,mo-1,d)).getUTCDay();   // 0=dom … 6=sáb
+  return {dow,minutes:hh*60+mm,hour:hh};
+}
+
+function aireDateRange(from,to){
+  const out=[];let d=new Date(from+"T12:00:00");const e=new Date(to+"T12:00:00");
+  while(d<=e){out.push(`${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`);d.setDate(d.getDate()+1);}
+  return out;
+}
+const fetchAir=date=>new Promise(res=>{
+  Papa.parse(`${REPO}/energy_logs/purpleair/${date}.csv`,{download:true,header:true,
+    complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp&&typeof x.timestamp==="string")),
+    error:()=>res([])});
+});
+
+// Serie de tiempo (líneas) con banda escolar opcional. Corta la línea en huecos
+// > AIRE_MAX_GAP_MS (noches/cortes) para no dibujar puentes falsos.
+function aireChart(targetId,series,bands){
+  const el=document.getElementById(targetId);el.innerHTML="";
+  const W=560,H=260,PL=36,PR=12,PT=12,PB=26;
+  const all=series.flatMap(s=>s.points);
+  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="13">sin datos en el rango seleccionado</text></svg>`;return;}
+  const xs=all.map(p=>p.x),ys=all.map(p=>p.y);
+  let xmin=Math.min(...xs),xmax=Math.max(...xs),ymax=Math.max(...ys,1)*1.12;
+  if(xmax===xmin)xmax=xmin+1;
+  const X=x=>PL+(x-xmin)/(xmax-xmin)*(W-PL-PR),Y=y=>H-PB-(y/ymax)*(H-PB-PT);
+  const bandRects=(bands||[]).map(b=>{
+    const x0=Math.max(xmin,b.x0),x1=Math.min(xmax,b.x1);
+    if(x1<=x0)return"";
+    return `<rect x="${X(x0).toFixed(1)}" y="${PT}" width="${(X(x1)-X(x0)).toFixed(1)}" height="${(H-PB-PT).toFixed(1)}" fill="rgba(128,128,128,.14)"/>`;
+  }).join("");
+  const ticks=[0,ymax/2,ymax];
+  const grid=ticks.map(t=>`<line x1="${PL}" y1="${Y(t).toFixed(1)}" x2="${W-PR}" y2="${Y(t).toFixed(1)}" stroke="rgba(128,128,128,.18)"/>
+    <text x="${PL-4}" y="${(Y(t)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#999">${t.toFixed(0)}</text>`).join("");
+  const xlab=ms=>new Date(ms).toLocaleString('es',{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  const xt=[xmin,(xmin+xmax)/2,xmax].map((x,i)=>`<text x="${X(x).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':i===2?'end':'middle'}" font-size="9" fill="#999">${xlab(x)}</text>`).join("");
+  const lines=series.map(s=>{if(!s.points.length)return"";
+    let d="",prev=null;
+    s.points.forEach(p=>{d+=(prev===null||p.x-prev>AIRE_MAX_GAP_MS?"M":"L")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)+" ";prev=p.x;});
+    return `<path d="${d.trim()}" fill="none" stroke="${s.color}" stroke-width="1.6"/>`;}).join("");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bandRects}${grid}${lines}${xt}</svg>`;
+}
+
+// Tabla de estadísticas para un subconjunto de filas (promedio/mediana/min/max/n + diferencia).
+function aireStatsTable(rows){
+  const by=AIRE_SENSORS.map(s=>{
+    const pm=rows.filter(r=>r.sid===s.id).map(r=>r.pm25);
+    return {...s,mean:_aireMean(pm),median:_aireMedian(pm),min:pm.length?Math.min(...pm):null,max:pm.length?Math.max(...pm):null,n:pm.length};
+  });
+  const w=by.find(s=>s.id===AIRE_FILTER),o=by.find(s=>s.id===AIRE_REF);
+  const red=(w&&o&&w.mean!=null&&o.mean!=null&&o.mean>0)?(o.mean-w.mean)/o.mean*100:null;
+  const row=s=>`<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${s.color};margin-right:6px;vertical-align:middle;"></span>${s.label}</td>
+    <td class="num" style="color:${pmColor(s.mean)};font-weight:500;">${af1(s.mean)}</td><td class="num">${af1(s.median)}</td><td class="num">${af1(s.min)}</td><td class="num">${af1(s.max)}</td><td class="num">${s.n}</td></tr>`;
+  const diff=(red==null)?`<tr><td colspan="6" style="color:var(--hint)">datos insuficientes para la diferencia</td></tr>`:
+    `<tr><td><b>Diferencia (sin − con)</b></td><td class="num" colspan="5"><b style="color:${red>0?'var(--green-mid)':'var(--red-mid)'}">${af1(o.mean-w.mean)} µg/m³ (${(red>0?"−":"+")+Math.abs(red).toFixed(1)}%)</b></td></tr>`;
+  return `<thead><tr><th>Sensor</th><th class="num">Prom</th><th class="num">Mediana</th><th class="num">Mín</th><th class="num">Máx</th><th class="num">n</th></tr></thead><tbody>${by.map(row).join("")}${diff}</tbody>`;
+}
+
+async function loadAire(){
+  const fromEl=document.getElementById("aireFrom"),toEl=document.getElementById("aireTo");
+  const today=new Date();
+  if(!toEl.value)toEl.value=`${today.getFullYear()}-${_pad(today.getMonth()+1)}-${_pad(today.getDate())}`;
+  if(!fromEl.value){const d=new Date();d.setDate(d.getDate()-6);fromEl.value=`${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`;}
+  const errEl=document.getElementById("aireErr");errEl.innerHTML="";
+  document.getElementById("aireStatus").textContent="cargando…";
+
+  const dates=aireDateRange(fromEl.value,toEl.value);
+  const frames=await Promise.all(dates.map(fetchAir));
+  const rows=frames.flat().map(r=>{
+    const tp=aireParseTs(r.timestamp);const v=parseFloat(r.pm25);
+    if(!tp||isNaN(v))return null;
+    return {sid:parseInt(r.sensor_id),t:new Date(r.timestamp).getTime(),pm25:v,tp};
+  }).filter(Boolean);
+
+  document.getElementById("aireStatus").textContent=`${rows.length} lecturas · ${dates.length} día(s)`;
+  const clearIds=["aireStatsSchool","aireStats24","aireLegSchool","aireLeg24"];
+  if(!rows.length){
+    errEl.innerHTML=`<div class="err">Sin lecturas de PurpleAir en el rango seleccionado.
+      Corre el collector: <code>uv run python collectors/purpleair.py</code> (necesita <code>PURPLEAIR_API_KEY</code> en el <code>.env</code>),
+      o amplía el rango de fechas.</div>`;
+    clearIds.forEach(id=>document.getElementById(id).innerHTML="");
+    aireChart("aireChartSchool",[]);aireChart("aireChart24",[]);return;
+  }
+
+  const seriesFrom=src=>AIRE_SENSORS.map(s=>({color:s.color,points:src.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25}))}));
+  const legend=withBand=>AIRE_SENSORS.map(s=>`<span class="dot" style="background:${s.color}"></span>${s.label}`).join("")+
+    (withBand?`<span class="sw" style="background:rgba(128,128,128,.28)"></span>horario escolar`:"");
+
+  // Banda escolar (6:30–15:00, L–V) para el gráfico de 24h.
+  const bands=[];
+  dates.forEach(d=>{const [y,mo,da]=d.split("-").map(Number);const dow=new Date(Date.UTC(y,mo-1,da)).getUTCDay();
+    if(dow>=1&&dow<=5)bands.push({x0:new Date(`${d}T06:30:00-05:00`).getTime(),x1:new Date(`${d}T15:00:00-05:00`).getTime()});});
+
+  // Izquierda: solo horario escolar.
+  const schoolRows=rows.filter(isSchool);
+  aireChart("aireChartSchool",seriesFrom(schoolRows));
+  document.getElementById("aireLegSchool").innerHTML=legend(false);
+  document.getElementById("aireStatsSchool").innerHTML=aireStatsTable(schoolRows);
+
+  // Derecha: 24 horas (todas) con banda escolar sombreada.
+  aireChart("aireChart24",seriesFrom(rows),bands);
+  document.getElementById("aireLeg24").innerHTML=legend(true);
+  document.getElementById("aireStats24").innerHTML=aireStatsTable(rows);
+}
+
+loadAire();
+setInterval(loadAire,60000);   // refresca cada minuto
+</script>
+</body>
+</html>
