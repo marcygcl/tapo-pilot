@@ -8,3 +8,7 @@ __pycache__/
 
 # Stata/binarios de datos pesados
 data/*.dta
+
+# Diagnósticos locales (benchmark + discovery) — contienen internos del dispositivo
+# (WiFi SSID/BSSID/MAC/IP, geolocalización de cuenta); NO deben auto-commitearse.
+energy_logs/benchmark/
