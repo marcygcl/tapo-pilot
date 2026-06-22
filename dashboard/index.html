@@ -118,6 +118,18 @@
     .chan-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue);}
     .tech-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em;color:#fff;}
     .map-filter{width:100%;margin-bottom:6px;padding:6px 8px;font-size:12px;border:.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);}
+    /* COMPARACIÓN TÉCNICA */
+    #tab-comparacion{flex-direction:column;overflow-y:auto;padding:20px 24px;gap:20px;}
+    #tab-comparacion svg{width:100%;height:180px;display:block;}
+    .sem{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;color:#fff;}
+    .sem-green{background:#639922;}.sem-amber{background:#ef9f27;}.sem-red{background:#e24b4a;}.sem-gray{background:#9c9a92;}
+    .cmp-legend{font-size:11px;color:var(--muted);margin-top:6px;}
+    .cmp-legend .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 10px;vertical-align:middle;}
+    .reco{font-size:14px;font-weight:600;}
+    #tab-comparacion .err{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-mid);border-radius:var(--r);padding:11px 14px;font-size:12.5px;}
+    #tab-comparacion .tbd{border-left:3px solid var(--orange-mid,#e8830c);padding:7px 12px;margin-bottom:7px;background:var(--surface);border-radius:0 var(--r) var(--r) 0;font-size:12.5px;}
+    #tab-comparacion .tbd b{color:var(--orange-mid,#e8830c);}
+    #tab-comparacion code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
     @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}.pipe-stage{width:90px;}}
   </style>
 </head>
@@ -134,6 +146,7 @@
   <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
   <div class="tab" onclick="switchTab('mapa',this)">Mapa</div>
   <div class="tab" onclick="switchTab('alertas',this)">Alertas</div>
+  <div class="tab" onclick="switchTab('comparacion',this)">Comparación Técnica</div>
 </div>
 
 <div class="panel active" id="tab-resumen">
@@ -222,6 +235,52 @@
   <div>
     <div class="section-title">3 · Efectividad por tipo de nudge <span id="effSim" style="color:var(--amber);font-weight:600"></span></div>
     <table class="alert-table" id="effTable"></table>
+  </div>
+</div>
+
+<div class="panel" id="tab-comparacion">
+  <div style="font-size:12px;color:var(--muted);">Decisión de implementación: <b>Emporia vs Shelly</b> para escalar a <b>144 escuelas</b> en Bogotá (Wi-Fi inestable, monitoreo remoto). <span id="cmpStatus" style="color:var(--hint)"></span></div>
+  <div id="cmpErr"></div>
+
+  <div>
+    <div class="section-title">1 · Resumen ejecutivo</div>
+    <div class="card" id="cmpExec"></div>
+    <table class="alert-table" id="cmpExecTable" style="margin-top:10px;"></table>
+  </div>
+
+  <div>
+    <div class="section-title">2 · Resiliencia (test de corte de internet)</div>
+    <table class="alert-table" id="cmpResil"></table>
+    <div class="edit-hint" id="cmpResilNote"></div>
+  </div>
+
+  <div>
+    <div class="section-title">3 · Calidad de datos</div>
+    <table class="alert-table" id="cmpQuality"></table>
+  </div>
+
+  <div>
+    <div class="section-title">4 · Latencia y reporte</div>
+    <div class="two-col">
+      <div class="chart-box"><div class="section-title" style="margin-bottom:8px;">Latencia en el tiempo</div>
+        <div id="cmpLatChart"></div><div class="cmp-legend" id="cmpLatLeg"></div></div>
+      <div class="chart-box"><div class="section-title" style="margin-bottom:8px;">Métricas de latencia</div>
+        <table class="alert-table" id="cmpLatTable"></table></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-title">5 · Datos crudos (benchmark)</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+      <select id="cmpFilterTech" class="map-filter" style="width:auto;" onchange="renderCmpRaw()"></select>
+      <input id="cmpFilterText" class="map-filter" style="width:auto;flex:1;min-width:140px;" placeholder="filtrar (alias, error...)" oninput="renderCmpRaw()">
+    </div>
+    <div style="max-height:300px;overflow-y:auto;"><table class="alert-table" id="cmpRaw"></table></div>
+  </div>
+
+  <div>
+    <div class="section-title">6 · Preguntas abiertas / TODO</div>
+    <div class="card" id="cmpTodo"></div>
   </div>
 </div>
 
@@ -792,6 +851,165 @@ function switchTab(id,el){
   el.classList.add("active");
   document.getElementById("tab-"+id).classList.add("active");
   if(id==="mapa"&&!_mapInit){initMap();_mapInit=true;}
+  if(id==="comparacion"){loadComparacion();
+    if(!_cmpTimer)_cmpTimer=setInterval(()=>{if(document.getElementById("tab-comparacion").classList.contains("active"))loadComparacion();},60000);}
+}
+
+// ===================== COMPARACIÓN TÉCNICA =====================
+// Lee CSVs LOCALES de benchmark vía manifest (requiere servir el repo por HTTP:
+// `python3 -m http.server 8000` en la raíz y abrir localhost:8000/dashboard/index.html).
+const CMP_BENCH="../energy_logs/benchmark";
+let _cmpRows=[],_cmpResil=[],_cmpTimer=null;
+const cmpNum=v=>{const n=parseFloat(v);return isNaN(n)?null:n;};
+const cmpMean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const cmpStd=a=>{if(a.length<1)return null;const m=cmpMean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/a.length);};
+const cf0=v=>v==null?"—":(+v).toFixed(0), cf1=v=>v==null?"—":(+v).toFixed(1);
+function cmpCSV(t){const l=t.trim().split(/\r?\n/);if(l.length<2)return[];const h=l[0].split(",");
+  return l.slice(1).map(r=>{const c=r.split(",");const o={};h.forEach((x,i)=>o[x]=c[i]);return o;});}
+
+function cmpLineChart(target,series){
+  const el=document.getElementById(target);el.innerHTML="";
+  const W=600,H=180,P=30,all=series.flatMap(s=>s.points);
+  if(!all.length){el.innerHTML='<svg viewBox="0 0 600 180"><text x="300" y="90" text-anchor="middle" fill="#999" font-size="13">sin datos (corre el benchmark)</text></svg>';return;}
+  const xs=all.map(p=>p.x),ys=all.map(p=>p.y);
+  let xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=0,ymax=Math.max(...ys,1);
+  if(xmax===xmin)xmax=xmin+1; if(ymax===ymin)ymax+=1;
+  const X=x=>P+(x-xmin)/(xmax-xmin)*(W-2*P),Y=y=>H-P-(y-ymin)/(ymax-ymin)*(H-2*P);
+  const grid=`<line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="rgba(128,128,128,.3)"/>
+    <line x1="${P}" y1="${P}" x2="${P}" y2="${H-P}" stroke="rgba(128,128,128,.3)"/>
+    <text x="${P-4}" y="${Y(ymax)+4}" text-anchor="end" font-size="9" fill="#999">${ymax.toFixed(0)}</text>
+    <text x="${P-4}" y="${H-P}" text-anchor="end" font-size="9" fill="#999">0</text>`;
+  const lines=series.map(s=>{if(!s.points.length)return"";
+    const d=s.points.map((p,i)=>(i?"L":"M")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)).join(" ");
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.8"/>`;}).join("");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${lines}</svg>`;
+}
+
+async function loadComparacion(){
+  const errEl=document.getElementById("cmpErr");errEl.innerHTML="";
+  let manifest=null;
+  try{manifest=await (await fetch(`${CMP_BENCH}/manifest.json?t=`+Date.now())).json();}
+  catch(e){errEl.innerHTML=`<div class="err">No se pudo leer <code>energy_logs/benchmark/manifest.json</code> (local).
+    Sirve el repo y ábrelo por HTTP:<br><code>cd $(git rev-parse --show-toplevel) && python3 -m http.server 8000</code><br>
+    luego <code>http://localhost:8000/dashboard/index.html</code>. Genera datos con
+    <code>uv run python collectors/benchmark.py</code>.</div>`;}
+  _cmpRows=[];_cmpResil=[];
+  if(manifest){
+    for(const f of (manifest.files||[]).slice(-3)){
+      try{const t=await (await fetch(`${CMP_BENCH}/${f}?t=`+Date.now())).text();cmpCSV(t).forEach(r=>_cmpRows.push(r));}catch(e){}
+    }
+    const rf=manifest.resilience||[];
+    if(rf.length){try{const t=await (await fetch(`${CMP_BENCH}/${rf[rf.length-1]}?t=`+Date.now())).text();_cmpResil=cmpCSV(t);}catch(e){}}
+  }
+  _cmpRows.sort((a,b)=>a.timestamp<b.timestamp?-1:1);
+  renderCmpExec();renderCmpResil();renderCmpQuality();renderCmpLatency();renderCmpRawSetup();renderCmpTodo();
+  document.getElementById("cmpStatus").textContent=manifest?`· ${_cmpRows.length} lecturas cargadas · ${new Date().toLocaleTimeString()}`:"";
+}
+
+function cmpStats(tech){
+  const rt=_cmpRows.filter(r=>r.technology===tech),ok=rt.filter(r=>!r.error_msg);
+  const watts=ok.map(r=>cmpNum(r.watts)).filter(v=>v!=null);
+  const lats=[...new Set(rt.map(r=>r.timestamp+"|"+r.latency_ms))].map(k=>cmpNum(k.split("|")[1])).filter(v=>v!=null);
+  return {n:rt.length,ok:ok.length,fail:rt.length-ok.length,watts,lats,latAvg:cmpMean(lats),
+    latMin:lats.length?Math.min(...lats):null,latMax:lats.length?Math.max(...lats):null,latStd:cmpStd(lats),
+    wMin:watts.length?Math.min(...watts):null,wMax:watts.length?Math.max(...watts):null};
+}
+function semCell(level,note){const cls={green:"sem-green",amber:"sem-amber",red:"sem-red",gray:"sem-gray"}[level];
+  const lbl={green:"Bien",amber:"Medio",red:"Riesgo",gray:"TBD"}[level];
+  return `<span class="sem ${cls}">${lbl}</span> <span style="font-size:11px;color:var(--muted)">${note}</span>`;}
+
+function renderCmpExec(){
+  const e=cmpStats("emporia"),s=cmpStats("shelly");
+  document.getElementById("cmpExec").innerHTML=`<div class="reco">Recomendación preliminar: <span style="color:var(--orange-mid,#e8830c)">Shelly</span> como candidato principal para escalar (Wi-Fi inestable, monitoreo remoto).</div>
+    <p style="font-size:12.5px;color:var(--muted);margin-top:6px;">Shelly responde más rápido y estable (~${cf0(s.latAvg)} ms vs ~${cf0(e.latAvg)} ms de Emporia) y expone telemetría eléctrica rica (voltaje, corriente, temperatura, RSSI) útil para detectar fallas del filtro de forma remota; su contador de energía es acumulado en el dispositivo. Emporia aporta histórico cloud robusto (≥365 días) y buffering local. <b>Factor decisivo pendiente:</b> el test de resiliencia con corte físico real — los datos de resiliencia actuales son de un <i>dry-run</i> sin outage.</p>`;
+  const rows=[
+    ["Resiliencia",["amber","cloud + reconexión; falta test real"],["amber","cloud; contador no se pierde; falta test real"]],
+    ["Calidad de datos",["amber","127 campos, mayoría metadata de cuenta"],["green","66 campos con telemetría eléctrica útil"]],
+    ["Latencia",["amber",`~${cf0(e.latAvg)} ms, con reintentos`],["green",`~${cf0(s.latAvg)} ms, estable`]],
+    ["Costo / escalabilidad",["gray","por confirmar"],["gray","por confirmar"]],
+  ];
+  document.getElementById("cmpExecTable").innerHTML=`<thead><tr><th>Criterio</th><th>Emporia</th><th>Shelly</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${semCell(...r[1])}</td><td>${semCell(...r[2])}</td></tr>`).join("")+`</tbody>`;
+}
+
+function renderCmpResil(){
+  const note=document.getElementById("cmpResilNote");
+  if(!_cmpResil.length){document.getElementById("cmpResil").innerHTML='<tbody><tr><td>Sin <code>resilience_test_*.csv</code> en el manifest. Corre <code>collectors/discover_resilience.py</code> y el benchmark para refrescar el manifest.</td></tr></tbody>';note.textContent="";return;}
+  const f=tech=>{const rt=_cmpResil.filter(r=>r.technology===tech);
+    const fails=rt.filter(r=>["OFFLINE","TIMEOUT","ERROR"].includes(r.status)).length;
+    const recs=rt.filter(r=>r.status==="RECOVERING").map(r=>cmpNum(r.recovery_time_s)).filter(v=>v!=null);
+    const okAfter=rt.some(r=>r.status==="RECOVERING"||r.status==="OK");
+    return {ok:rt.filter(r=>r.status==="OK").length,fails,recAvg:cmpMean(recs),recN:recs.length,
+      reconn:fails?(okAfter?"Sí":"No"):"n/a (sin corte)"};};
+  const e=f("emporia"),s=f("shelly"),phases=[...new Set(_cmpResil.map(r=>r.phase))];
+  const realOutage=_cmpResil.some(r=>["OFFLINE","TIMEOUT"].includes(r.status));
+  document.getElementById("cmpResil").innerHTML=`<thead><tr><th>Métrica</th><th>Emporia</th><th>Shelly</th></tr></thead><tbody>
+    <tr><td>Lecturas OK</td><td>${e.ok}</td><td>${s.ok}</td></tr>
+    <tr><td>Fallos (OFFLINE/TIMEOUT)</td><td>${e.fails}</td><td>${s.fails}</td></tr>
+    <tr><td>Time-to-recover (media s)</td><td>${cf1(e.recAvg)}</td><td>${cf1(s.recAvg)}</td></tr>
+    <tr><td>Recuperación de datos offline</td><td>${e.recN?"sí ("+e.recN+")":"—"}</td><td>${s.recN?"sí ("+s.recN+")":"—"}</td></tr>
+    <tr><td>Reconexión automática</td><td>${e.reconn}</td><td>${s.reconn}</td></tr></tbody>`;
+  note.innerHTML=realOutage?`Fases: ${phases.join(" → ")}.`:`⚠️ El CSV de resiliencia es un <b>dry-run</b> (sin corte físico real): no hay fallos. Corre <code>collectors/discover_resilience.py</code> desconectando el router para datos reales. Fases: ${phases.join(" → ")}.`;
+}
+
+function renderCmpQuality(){
+  document.getElementById("cmpQuality").innerHTML=`<thead><tr><th>Aspecto</th><th>Emporia</th><th>Shelly</th></tr></thead><tbody>
+    <tr><td>Nº de campos expuestos (API)</td><td><b>127</b></td><td><b>66</b></td></tr>
+    <tr><td>Telemetría eléctrica útil</td><td>watts, energía (kWh)</td><td>watts, voltaje, corriente, frecuencia, temperatura, RSSI, energía</td></tr>
+    <tr><td>¿Distingue rango Sqair 6–38W?</td><td>Sí (mide watts, resolución &lt;1W)</td><td>Sí (mide watts, resolución &lt;1W)</td></tr>
+    <tr><td>Campos únicos</td><td>geolocalización, tarifa $/kWh, propiedades de ubicación</td><td>voltage, current, freq, temperature, wifi_rssi</td></tr>
+    <tr><td>Histórico</td><td>≥365 días (get_chart_usage)</td><td>solo últimos 3 min + contador acumulado</td></tr></tbody>`;
+}
+
+function renderCmpLatency(){
+  const e=cmpStats("emporia"),s=cmpStats("shelly");
+  const ser=tech=>{const seen={};_cmpRows.filter(r=>r.technology===tech).forEach(r=>{const v=cmpNum(r.latency_ms);if(v!=null)seen[r.timestamp]=v;});
+    return Object.keys(seen).sort().map(ts=>({x:new Date(ts).getTime(),y:seen[ts]}));};
+  cmpLineChart("cmpLatChart",[{color:"#639922",points:ser("emporia")},{color:"#e8830c",points:ser("shelly")}]);
+  document.getElementById("cmpLatLeg").innerHTML='<span class="dot" style="background:#639922"></span>Emporia<span class="dot" style="background:#e8830c"></span>Shelly';
+  document.getElementById("cmpLatTable").innerHTML=`<thead><tr><th>Métrica</th><th>Emporia</th><th>Shelly</th></tr></thead><tbody>
+    <tr><td>Promedio</td><td>${cf0(e.latAvg)} ms</td><td>${cf0(s.latAvg)} ms</td></tr>
+    <tr><td>Min–Max</td><td>${cf0(e.latMin)}–${cf0(e.latMax)} ms</td><td>${cf0(s.latMin)}–${cf0(s.latMax)} ms</td></tr>
+    <tr><td>σ (estabilidad)</td><td>${cf0(e.latStd)} ms</td><td>${cf0(s.latStd)} ms</td></tr>
+    <tr><td>¿Tiempo real?</td><td>Con delay (~1–2 s; dato 1S + reintentos)</td><td>Tiempo real (sub-segundo)</td></tr></tbody>`;
+}
+
+function renderCmpRawSetup(){
+  const sel=document.getElementById("cmpFilterTech");
+  if(sel.options.length===0)sel.innerHTML='<option value="">Todas</option><option value="emporia">Emporia</option><option value="shelly">Shelly</option>';
+  renderCmpRaw();
+}
+function renderCmpRaw(){
+  const tech=document.getElementById("cmpFilterTech").value,q=(document.getElementById("cmpFilterText").value||"").toLowerCase();
+  let rows=_cmpRows.filter(r=>!tech||r.technology===tech);
+  if(q)rows=rows.filter(r=>((r.alias||"")+" "+(r.error_msg||"")+" "+(r.device||"")).toLowerCase().includes(q));
+  rows=rows.slice(-120).reverse();
+  document.getElementById("cmpRaw").innerHTML=`<thead><tr><th>Hora</th><th>Tech</th><th>Alias</th><th>On</th><th>W</th><th>Wh</th><th>ms</th><th>V</th><th>°C</th><th>RSSI</th><th>Error</th></tr></thead><tbody>`+
+    (rows.map(r=>`<tr><td>${(r.timestamp||"").slice(11,19)}</td><td>${r.technology==="emporia"?"EMP":"SHE"}</td><td>${r.alias||""}</td>
+      <td>${r.is_on==="1"?"ON":(r.is_on===""?"—":"OFF")}</td><td>${r.watts||"—"}</td><td>${r.today_wh||"—"}</td><td>${r.latency_ms||"—"}</td>
+      <td>${r.voltage||"—"}</td><td>${r.temperature||"—"}</td><td>${r.wifi_rssi||"—"}</td>
+      <td style="color:var(--red-mid)">${(r.error_msg||"").slice(0,30)}</td></tr>`).join("")||'<tr><td colspan="11" style="color:var(--hint)">sin datos (corre el benchmark)</td></tr>')+`</tbody>`;
+}
+
+function renderCmpTodo(){
+  const tbd=[
+    "¿Shelly Cloud tiene un endpoint de estadísticas con rango histórico? /device/all_status solo da últimos 3 min + total acumulado.",
+    "¿Emporia hace backfill real del consumo perdido tras un corte, o solo reporta el estado actual? (correr discover_resilience.py con corte físico).",
+    "¿Cuántos días retiene Emporia a escala 1S/1MIN? El sondeo a 730 días dio error 400 (ventana máx ~365d por query).",
+    "¿La latencia de Emporia (~1.5s) baja con menos reintentos, o depende de si el dato del segundo ya está disponible?",
+    "¿La telemetría extra de Shelly (temperatura, voltaje, freq) sirve para detectar fallas del filtro que Emporia no ve?",
+    "¿El contador aenergy.total de Shelly se resetea con reboots? Afecta el cálculo de today_wh por delta.",
+  ];
+  document.getElementById("cmpTodo").innerHTML=
+    tbd.map(q=>`<div class="tbd"><b>TBD:</b> ${q}</div>`).join("")+
+    `<div style="margin-top:10px;font-size:12.5px;">
+      <b>Docs:</b>
+      <a href="https://github.com/magico13/PyEmVue" target="_blank">PyEmVue (Emporia)</a> ·
+      <a href="https://github.com/magico13/PyEmVue/blob/master/api_docs.md" target="_blank">API Emporia (no oficial)</a> ·
+      <a href="https://shelly-api-docs.shelly.cloud/" target="_blank">Shelly API</a> ·
+      <a href="https://shelly-api-docs.shelly.cloud/cloud-control-api/communication" target="_blank">Shelly Cloud Control</a>
+      <div style="margin-top:8px;color:var(--muted)"><b>Falta investigar:</b> correr test de resiliencia real (corte físico); endpoint de histórico de Shelly; dejar el benchmark ≥24h; validar sensibilidad con carga real; métrica canónica de today_wh para Shelly.</div>
+    </div>`;
 }
 
 main().catch(e=>{document.getElementById("subtitle").textContent="Error: "+e.message;console.error(e);});
