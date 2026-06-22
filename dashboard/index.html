@@ -117,6 +117,7 @@
     .pipe-conn.done{background:var(--green-mid);}
     .chan-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue);}
     .tech-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em;color:#fff;}
+    .map-filter{width:100%;margin-bottom:6px;padding:6px 8px;font-size:12px;border:.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);}
     @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.school-cards{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}#tab-mapa{flex-direction:column;}.map-side{width:100%;height:300px;border-left:none;border-top:.5px solid var(--border);}.pipe-stage{width:90px;}}
   </style>
 </head>
@@ -171,18 +172,22 @@
   <div class="map-wrap">
     <div id="map"></div>
     <div class="map-legend">
-      <b>Semáforo (color = severidad)</b>
-      <div class="leg-row"><span class="dot" style="background:#639922"></span>Sin flags</div>
-      <div class="leg-row"><span class="dot" style="background:#ef9f27"></span>Flag media/baja</div>
-      <div class="leg-row"><span class="dot" style="background:#e24b4a"></span>Flag alta — visita</div>
-      <div style="border-top:.5px solid var(--border);margin:7px 0 5px;"></div>
-      <div class="leg-row"><span style="width:11px;height:11px;border-radius:50%;background:#888;display:inline-block;"></span>● Colegio (Emporia)</div>
-      <div class="leg-row"><span style="width:11px;height:11px;border-radius:3px;background:#888;display:inline-block;"></span>■ Shelly (por dispositivo)</div>
+      <b>Pin por escuela</b>
+      <div class="leg-row"><span class="dot" style="background:#9c9a92"></span>Sin plug ni filtro</div>
+      <div class="leg-row"><span class="dot" style="background:#378add"></span>Con filtro · sin plug</div>
+      <div class="leg-row"><span class="dot" style="background:#639922"></span>Plug Emporia (verde/amarillo/rojo = severidad)</div>
+      <div class="leg-row"><span class="dot" style="background:#e8830c"></span>Plug Shelly</div>
     </div>
   </div>
   <div class="map-side">
     <div class="map-sec">
-      <div class="map-sec-title">Aulas — click para detalle</div>
+      <div class="map-sec-title">Filtros</div>
+      <select id="filterLocalidad" class="map-filter"></select>
+      <select id="filterTreatment" class="map-filter"></select>
+      <div id="mapCount" style="font-size:10px;color:var(--hint);margin-top:4px;"></div>
+    </div>
+    <div class="map-sec" style="flex:1;min-height:0;overflow-y:auto;">
+      <div class="map-sec-title">Escuelas — click para detalle</div>
       <div id="mapAulaList"></div>
     </div>
     <div class="map-sec" id="mapTlSection" style="display:none">
@@ -254,7 +259,7 @@ const TECHS={emporia:{label:"Emporia",color:"#639922"},shelly:{label:"Shelly",co
 const techBadge=t=>`<span class="tech-badge" style="background:${(TECHS[t]||{}).color||'#888'}">${(TECHS[t]||{label:t}).label}</span>`;
 const aliasesByTech=t=>Object.keys(DEVICES).filter(a=>DEVICES[a].tech===t);
 
-let CFG=null,SCHOOLS={},DEVICES={};            // DEVICES[alias]={aula,schoolId}
+let CFG=null,SCHOOLS={},DEVICES={};            // SCHOOLS[uid]={...,plugs[]} · DEVICES[alias]={tech,school_uid}
 let _allRows=[],_byAlias={},_flags={},_latest={},_weekDays=[],_dailyWh=[];
 let _map,_mapInit=false,_markers={},_selSchool=null,_selAula=null;
 let _ladder=[],_alertsSim=false;
@@ -326,25 +331,39 @@ function computeFlags(rows){
 }
 const worstSev=flags=>flags.reduce((mx,f)=>Math.max(mx,SEV_RANK[FLAG_DEFS[f.type].sev]),0);
 const semColor=sev=>sev>=3?"#e24b4a":sev>=1?"#ef9f27":"#639922";
-function schoolWorst(sid){
-  const aulas=SCHOOLS[sid].aulas;
-  return aulas.reduce((mx,a)=>Math.max(mx,worstSev(_flags[a]||[])),0);
+// Plugs (aliases) de una escuela, opcionalmente filtrados por tecnología.
+const plugsOf=(uid,tech)=>(SCHOOLS[uid]?SCHOOLS[uid].plugs:[]).filter(p=>!tech||p.tech===tech).map(p=>p.alias);
+function schoolWorst(uid){
+  return (SCHOOLS[uid]?SCHOOLS[uid].plugs:[]).reduce((mx,p)=>Math.max(mx,worstSev(_flags[p.alias]||[])),0);
+}
+// Estado de pin de una escuela según su plug/filtro:
+//   Emporia -> verde/amarillo/rojo (severidad) · Shelly -> naranja
+//   con filtro sin plug -> azul · sin filtro ni plug -> gris
+const COLOR_NONE="#9c9a92",COLOR_FILTER="#378add",COLOR_SHELLY="#e8830c";
+function schoolStatus(uid){
+  const s=SCHOOLS[uid],plugs=s.plugs||[];
+  if(plugs.some(p=>p.tech==="emporia")){const sev=schoolWorst(uid);return {kind:"emporia",color:semColor(sev),sev};}
+  if(plugs.some(p=>p.tech==="shelly"))return {kind:"shelly",color:COLOR_SHELLY,sev:schoolWorst(uid)};
+  if((s.filter_classrooms||0)>0)return {kind:"filter",color:COLOR_FILTER,sev:0};
+  return {kind:"none",color:COLOR_NONE,sev:0};
 }
 
 async function main(){
   CFG=await (await fetch(`${REPO}/config.json`)).json();
   if(CFG.pilot&&CFG.pilot.name)document.getElementById("pilot-title").textContent=CFG.pilot.name+" — Emporia";
 
-  for(const s of (CFG.schools||[]))
-    SCHOOLS[s.id]={name:s.name,lat:s.lat,lng:s.lng,aulas:[]};
-  // Emporia: cada dispositivo se agrupa bajo su colegio (pin de colegio).
+  // Maestro de 217 escuelas de Bogotá (schools_master).
+  for(const s of (CFG.schools_master||[]))
+    SCHOOLS[s.school_uid]={uid:s.school_uid,name:s.name,localidad:s.localidad||"—",lat:s.lat,lng:s.lng,
+      treatment:s.treatment||"—",filter_classrooms:s.filter_classrooms||0,total_classrooms:s.total_classrooms||0,plugs:[]};
+  // Plugs Emporia/Shelly asignados a escuelas reales vía school_uid.
   for(const d of ((CFG.emporia||{}).devices||[])){
-    DEVICES[d.alias]={tech:"emporia",aula:d.aula||d.alias,schoolId:d.school_id};
-    if(d.school_id&&SCHOOLS[d.school_id])SCHOOLS[d.school_id].aulas.push(d.alias);
+    DEVICES[d.alias]={tech:"emporia",alias:d.alias,aula:d.aula||d.alias,school_uid:d.school_uid};
+    if(d.school_uid&&SCHOOLS[d.school_uid])SCHOOLS[d.school_uid].plugs.push({alias:d.alias,tech:"emporia"});
   }
-  // Shelly: cada dispositivo tiene su propia ubicación (pin individual).
   for(const d of ((CFG.shelly||{}).devices||[])){
-    DEVICES[d.alias]={tech:"shelly",aula:d.aula||d.alias,schoolId:d.school_id,id:d.id,lat:d.lat,lng:d.lng};
+    DEVICES[d.alias]={tech:"shelly",alias:d.alias,aula:d.aula||d.alias,school_uid:d.school_uid,id:d.id};
+    if(d.school_uid&&SCHOOLS[d.school_uid])SCHOOLS[d.school_uid].plugs.push({alias:d.alias,tech:"shelly"});
   }
 
   const days7=getDays(7);_weekDays=getWeek();
@@ -375,7 +394,7 @@ async function main(){
   const alertFrames=await Promise.all(days7.map(fetchAlerts));
   const alertRows=alertFrames.flat();
 
-  renderKpis();renderSchoolCards();renderShellySection();renderFlags();renderTrend();renderFlagLegend();renderMapAulaList();
+  renderKpis();renderSchoolCards();renderShellySection();renderFlags();renderTrend();renderFlagLegend();renderMapControls();
   renderAlertsTab(alertRows);
 }
 
@@ -421,11 +440,11 @@ function renderShellySection(){
     const dev=DEVICES[a],r=_latest[a],flags=_flags[a]||[];
     const sev=worstSev(flags),color=semColor(sev),sevName=sev>=3?"alta":sev>=1?"media":"";
     const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join(" ");
-    const sch=SCHOOLS[dev.schoolId];
+    const sch=SCHOOLS[dev.school_uid];
     return `<div class="school-card ${sevName?"flag-"+sevName:""} ${_selAula===a?"sel":""}" data-aula="${a}">
       <div class="school-sem" style="background:${color}"></div>
       <div class="school-name">${dev.aula} ${techBadge("shelly")}</div>
-      <div class="school-meta">${sch?sch.name:"—"} · id ${dev.id||a}</div>
+      <div class="school-meta">${sch?sch.name+" · "+sch.localidad:"—"} · id ${dev.id||a}</div>
       <div class="school-stats">
         <div class="school-stat">Estado <b style="color:${r&&r.is_on===1?"var(--green-mid)":"var(--red-mid)"}">${r?(r.is_on===1?"ON":"OFF"):"—"}</b></div>
         <div class="school-stat">Watts <b>${r?r.watts.toFixed(1):"—"}</b></div>
@@ -444,21 +463,22 @@ function renderShellySection(){
 
 function renderSchoolCards(){
   const cards=document.getElementById("schoolCards");cards.innerHTML="";
-  for(const [sid,data] of Object.entries(SCHOOLS)){
-    if(!data.aulas.length)continue;
+  const schools=Object.values(SCHOOLS).filter(s=>s.plugs.some(p=>p.tech==="emporia"));
+  for(const data of schools){
+    const sid=data.uid,aulas=plugsOf(sid,"emporia");
     const sev=schoolWorst(sid),color=semColor(sev);
     const sevName=sev>=3?"alta":sev>=1?"media":"";
-    const nFlags=data.aulas.reduce((s,a)=>s+(_flags[a]||[]).length,0);
-    const emojis=[...new Set(data.aulas.flatMap(a=>(_flags[a]||[]).map(f=>FLAG_DEFS[f.type].emoji)))].join(" ");
-    const active=data.aulas.filter(a=>_latest[a]&&_latest[a].is_on===1).length;
+    const nFlags=aulas.reduce((s,a)=>s+(_flags[a]||[]).length,0);
+    const emojis=[...new Set(aulas.flatMap(a=>(_flags[a]||[]).map(f=>FLAG_DEFS[f.type].emoji)))].join(" ");
+    const active=aulas.filter(a=>_latest[a]&&_latest[a].is_on===1).length;
     const div=document.createElement("div");
     div.className=`school-card ${sevName?"flag-"+sevName:""} ${_selSchool===sid?"sel":""}`;
     div.innerHTML=`
       <div class="school-sem" style="background:${color}"></div>
-      <div class="school-name">${data.name}</div>
-      <div class="school-meta">${data.aulas.length} aula${data.aulas.length>1?"s":""} · monitoreo 24/7</div>
+      <div class="school-name">${data.name} ${techBadge("emporia")}</div>
+      <div class="school-meta">${data.localidad} · ${data.filter_classrooms}/${data.total_classrooms} aulas con filtro</div>
       <div class="school-stats">
-        <div class="school-stat">Activas <b>${active}/${data.aulas.length}</b></div>
+        <div class="school-stat">Plugs activos <b>${active}/${aulas.length}</b></div>
         <div class="school-stat">Flags <b>${nFlags}</b></div>
       </div>
       <div class="school-flags">${emojis||'<span style="color:var(--green-mid);font-size:11px;letter-spacing:0">● sin novedad</span>'}</div>`;
@@ -478,9 +498,9 @@ function renderAulaDetail(){
   if(!_selSchool){sec.style.display="none";return;}
   sec.style.display="block";
   const data=SCHOOLS[_selSchool];
-  document.getElementById("detailTitle").textContent=`Detalle de aulas — ${data.name}`;
+  document.getElementById("detailTitle").textContent=`Detalle — ${data.name} (${data.localidad})`;
   const box=document.getElementById("aulaDetail");
-  box.innerHTML=data.aulas.map(a=>{
+  box.innerHTML=plugsOf(_selSchool).map(a=>{
     const r=_latest[a],flags=_flags[a]||[];
     const sev=worstSev(flags),color=semColor(sev);
     const w=r?r.watts.toFixed(1)+"W":"—";
@@ -526,7 +546,7 @@ function renderFlags(){
   if(!flat.length){sec.style.display="none";return;}
   sec.style.display="block";
   document.getElementById("flagList").innerHTML=flat.map(f=>{
-    const def=FLAG_DEFS[f.type],dev=DEVICES[f.alias],sch=SCHOOLS[dev.schoolId];
+    const def=FLAG_DEFS[f.type],dev=DEVICES[f.alias],sch=SCHOOLS[dev.school_uid];
     return `<div class="flag-card ${def.sev}">
       <div class="flag-emoji">${def.emoji}</div>
       <div class="flag-body">
@@ -559,70 +579,92 @@ function renderTrend(){
 }
 
 // ---- MAPA ----
-function renderMapAulaList(){
-  const list=document.getElementById("mapAulaList");
-  list.innerHTML=Object.keys(DEVICES).map(a=>{
-    const r=_latest[a],flags=_flags[a]||[],dev=DEVICES[a];
-    const sev=worstSev(flags),color=semColor(sev);
-    const w=r?r.watts.toFixed(1)+"W":"—",on=r&&r.is_on===1;
-    const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join("");
-    return `<div class="aula-row" data-aula="${a}">
-      <span class="aula-sem" style="background:${color}"></span>
-      <div class="aula-info"><div class="aula-name">${dev.aula} ${techBadge(dev.tech)}</div>
-        <div class="aula-sub">${SCHOOLS[dev.schoolId]?SCHOOLS[dev.schoolId].name:"—"}</div></div>
+function fillSelect(id,allLabel,opts){
+  const sel=document.getElementById(id);if(!sel)return;
+  sel.innerHTML=`<option value="">${allLabel}</option>`+opts.map(o=>`<option value="${o}">${o}</option>`).join("");
+}
+const getFilter=()=>({loc:(document.getElementById("filterLocalidad")||{}).value||"",tr:(document.getElementById("filterTreatment")||{}).value||""});
+const matchFilter=(s,f)=>(!f.loc||s.localidad===f.loc)&&(!f.tr||s.treatment===f.tr);
+
+function renderMapControls(){
+  const locs=[...new Set(Object.values(SCHOOLS).map(s=>s.localidad))].sort();
+  const trs=[...new Set(Object.values(SCHOOLS).map(s=>s.treatment))].sort();
+  fillSelect("filterLocalidad","Todas las localidades",locs);
+  fillSelect("filterTreatment","Todos los tratamientos",trs);
+  const onChange=()=>{renderSchoolList();applyMapFilter();};
+  ["filterLocalidad","filterTreatment"].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener("change",onChange);});
+  renderSchoolList();
+}
+
+function renderSchoolList(){
+  const f=getFilter(),list=document.getElementById("mapAulaList");
+  const schools=Object.values(SCHOOLS).filter(s=>matchFilter(s,f))
+    .sort((a,b)=>schoolStatus(b.uid).sev-schoolStatus(a.uid).sev || b.plugs.length-a.plugs.length || (""+a.name).localeCompare(b.name));
+  const withPlug=schools.filter(s=>s.plugs.length).length;
+  document.getElementById("mapCount").textContent=`${schools.length} escuelas · ${withPlug} con plug`;
+  list.innerHTML=schools.map(s=>{
+    const st=schoolStatus(s.uid),plug=s.plugs[0],r=plug?_latest[plug.alias]:null;
+    const flags=plug?(_flags[plug.alias]||[]):[],emojis=flags.map(x=>FLAG_DEFS[x.type].emoji).join("");
+    const tag=st.kind==="emporia"?techBadge("emporia"):st.kind==="shelly"?techBadge("shelly")
+      :st.kind==="filter"?`<span class="tech-badge" style="background:${COLOR_FILTER}">Filtro</span>`
+      :`<span class="tech-badge" style="background:${COLOR_NONE}">Sin plug</span>`;
+    const nm=s.name.length>30?s.name.slice(0,28)+"…":s.name;
+    return `<div class="aula-row" data-uid="${s.uid}" data-plug="${plug?plug.alias:''}">
+      <span class="aula-sem" style="background:${st.color}"></span>
+      <div class="aula-info"><div class="aula-name">${nm} ${tag}</div>
+        <div class="aula-sub">${s.localidad} · ${s.treatment}</div></div>
       <div class="aula-flags">${emojis}</div>
-      <div class="aula-w" style="color:${on?"var(--green-mid)":"var(--red-mid)"}">${w}</div>
+      <div class="aula-w" style="color:${r&&r.is_on===1?'var(--green-mid)':'var(--muted)'}">${r?r.watts.toFixed(1)+'W':''}</div>
     </div>`;
   }).join("");
   list.querySelectorAll(".aula-row").forEach(row=>row.addEventListener("click",()=>{
-    const a=row.dataset.aula;_selAula=a;
-    list.querySelectorAll(".aula-row").forEach(x=>x.classList.toggle("sel",x.dataset.aula===a));
-    const dev=DEVICES[a];
-    if(_map){
-      if(dev.tech==="shelly"&&dev.lat!=null){_map.setView([dev.lat,dev.lng],15);const m=_markers["shelly:"+a];if(m)m.openPopup();}
-      else{const sch=SCHOOLS[dev.schoolId];if(sch){_map.setView([sch.lat,sch.lng],15);if(_markers[dev.schoolId])_markers[dev.schoolId].openPopup();}}
-    }
-    document.getElementById("mapTlSection").style.display="block";
-    renderTimeline("mapTlGrid",a);
+    const uid=row.dataset.uid,plug=row.dataset.plug,s=SCHOOLS[uid];
+    list.querySelectorAll(".aula-row").forEach(x=>x.classList.toggle("sel",x.dataset.uid===uid));
+    if(_map&&s){_map.setView([s.lat,s.lng],15);if(_markers[uid])_markers[uid].openPopup();}
+    const tl=document.getElementById("mapTlSection");
+    if(plug){_selAula=plug;tl.style.display="block";renderTimeline("mapTlGrid",plug);}else{tl.style.display="none";}
   }));
+}
+
+function applyMapFilter(){
+  if(!_map)return;
+  const f=getFilter();
+  Object.values(SCHOOLS).forEach(s=>{
+    const m=_markers[s.uid];if(!m)return;
+    const show=matchFilter(s,f);
+    if(show&&!_map.hasLayer(m))m.addTo(_map);
+    else if(!show&&_map.hasLayer(m))_map.removeLayer(m);
+  });
 }
 
 function initMap(){
   const dark=matchMedia("(prefers-color-scheme:dark)").matches;
-  _map=L.map("map",{zoomControl:true}).setView([4.672,-74.058],12);
+  _map=L.map("map",{zoomControl:true}).setView([4.61,-74.10],11);
   L.tileLayer(dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(_map);
-  Object.entries(SCHOOLS).forEach(([sid,data])=>{
-    if(!data.aulas.length)return;
-    const sev=schoolWorst(sid),color=semColor(sev);
-    const rows=data.aulas.map(a=>{
-      const flags=_flags[a]||[],emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join("")||"●";
-      return `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px;"><span>${DEVICES[a].aula}</span><span>${emojis}</span></div>`;
-    }).join("");
-    const icon=L.divIcon({html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:white;">${data.aulas.length}</div>`,className:"",iconSize:[30,30],iconAnchor:[15,15]});
-    const m=L.marker([data.lat,data.lng],{icon}).addTo(_map);
-    m.bindPopup(`<div style="min-width:170px;"><strong style="font-size:13px;">${data.name}</strong><div style="font-size:10px;color:#888;margin:2px 0 6px;">${data.aulas.length} aula(s) Emporia</div>${rows}</div>`);
-    _markers[sid]=m;
+  // Un pin por escuela (217). Color según estado; los que tienen plug son más grandes.
+  Object.values(SCHOOLS).forEach(s=>{
+    if(s.lat==null||s.lng==null)return;
+    const st=schoolStatus(s.uid),isPlug=st.kind==="emporia"||st.kind==="shelly";
+    const stroke=st.kind==="shelly"?COLOR_SHELLY:st.kind==="emporia"?"#fff":st.color;
+    const m=L.circleMarker([s.lat,s.lng],{radius:isPlug?8:5,fillColor:st.color,color:stroke,weight:isPlug?2.5:1,opacity:1,fillOpacity:isPlug?0.95:0.65});
+    const plug=s.plugs[0],r=plug?_latest[plug.alias]:null;
+    const flags=plug?(_flags[plug.alias]||[]):[],emojis=flags.map(x=>FLAG_DEFS[x.type].emoji).join(" ");
+    const plugLine=plug
+      ?`<div style="font-size:10px;margin-top:4px;">${techBadge(plug.tech)} ${r?(r.is_on===1?"ON":"OFF")+" · "+r.watts.toFixed(1)+"W":"sin datos"} ${emojis}</div>`
+      :((s.filter_classrooms||0)>0?`<div style="font-size:10px;color:${COLOR_FILTER};margin-top:4px;">Con filtro · sin plug</div>`:`<div style="font-size:10px;color:#888;margin-top:4px;">Sin plug ni filtro</div>`);
+    m.bindPopup(`<div style="min-width:185px;"><strong style="font-size:12px;">${s.name}</strong><div style="font-size:10px;color:#888;margin:2px 0;">${s.localidad} · ${s.treatment}</div><div style="font-size:10px;">Filtros: ${s.filter_classrooms}/${s.total_classrooms} aulas</div>${plugLine}</div>`);
+    _markers[s.uid]=m;
   });
-  // Pines Shelly: cuadrado con borde naranja + "S" (distinto de los círculos de colegio).
-  aliasesByTech("shelly").forEach(a=>{
-    const dev=DEVICES[a];if(dev.lat==null)return;
-    const flags=_flags[a]||[],sev=worstSev(flags),color=semColor(sev),r=_latest[a];
-    const emojis=flags.map(f=>FLAG_DEFS[f.type].emoji).join("")||"●";
-    const icon=L.divIcon({html:`<div style="width:28px;height:28px;border-radius:7px;background:${color};border:2.5px solid ${TECHS.shelly.color};box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;">S</div>`,className:"",iconSize:[28,28],iconAnchor:[14,14]});
-    const m=L.marker([dev.lat,dev.lng],{icon}).addTo(_map);
-    const sch=SCHOOLS[dev.schoolId];
-    m.bindPopup(`<div style="min-width:160px;"><strong style="font-size:13px;">${dev.aula}</strong> <span style="font-size:9px;background:${TECHS.shelly.color};color:#fff;padding:1px 6px;border-radius:7px;">SHELLY</span><div style="font-size:10px;color:#888;margin:2px 0 6px;">${sch?sch.name:"—"} · ${r?(r.is_on===1?"ON":"OFF")+" · "+r.watts.toFixed(1)+"W":"sin datos"}</div><div style="font-size:11px;">${emojis}</div></div>`);
-    _markers["shelly:"+a]=m;
-  });
+  applyMapFilter();
 }
 
 // ---- ALERTAS ----
 const CHANNELS=[{key:"sms",label:"SMS"},{key:"whatsapp",label:"WhatsApp"},{key:"ivr",label:"Llamada IVR"},{key:"visit",label:"Visita"},{key:"none",label:"—"}];
 const chanLabel=k=>{const c=CHANNELS.find(c=>c.key===k);return c?c.label:(k||"—");};
 
-// Resuelve {tech, alias} de un dispositivo a partir de su aula (y colegio si ayuda).
-function inferDevice(aula,school_id){
-  let hit=Object.entries(DEVICES).find(([a,d])=>d.aula===aula&&(!school_id||d.schoolId===school_id));
+// Resuelve {tech, alias} de un dispositivo a partir del school_uid (o el aula).
+function inferDevice(aula,school_uid){
+  let hit=Object.entries(DEVICES).find(([a,d])=>school_uid&&d.school_uid===school_uid);
   if(!hit)hit=Object.entries(DEVICES).find(([a,d])=>d.aula===aula);
   return hit?{alias:hit[0],tech:hit[1].tech}:{alias:null,tech:null};
 }
@@ -651,20 +693,22 @@ function simulateAlerts(){
     const hours=(NOW-new Date(f.start))/3600e3,step=recommendedStep(hours);
     const nudged=step.channel&&step.channel!=="none";
     recs.push({detected:new Date(f.start),nudge_sent:nudged?new Date(new Date(f.start).getTime()+(step.min_hours||0)*3600e3):null,
-      resolved_at:null,school_id:dev.schoolId,aula:dev.aula,flag_type:f.type,tech:dev.tech,alias:a,
+      resolved_at:null,school_id:dev.school_uid,aula:dev.aula,flag_type:f.type,tech:dev.tech,alias:a,
       channel:nudged?step.channel:null,nudge_status:nudged?"sent":"pending",response_ivr:"",resolved:false,resolution_hours:null});
   }));
+  // Demos históricos (resueltos/en curso) atados a los plugs reales asignados.
+  const dmeta=alias=>{const d=DEVICES[alias]||{};return {sid:d.school_uid,aula:d.aula||alias,tech:d.tech};};
   const demo=[
-    {det:96,nud:72,res:66,sid:"school_1",aula:"Aula 101",dev:"one",     tech:"emporia",ft:"off",      ch:"whatsapp",ivr:"",         rs:true, rh:30},
-    {det:40,nud:24,res:26,sid:"school_1",aula:"Aula 102",dev:"two",     tech:"emporia",ft:"no_watts", ch:"whatsapp",ivr:"",         rs:true, rh:14},
-    {det:90,nud:48,res:38,sid:"school_2",aula:"Aula 103",dev:"three",   tech:"emporia",ft:"no_data",  ch:"ivr",     ivr:"1",        rs:true, rh:52},
-    {det:120,nud:72,res:40,sid:"school_3",aula:"Aula 201",dev:"four",   tech:"emporia",ft:"off",      ch:"visit",   ivr:"",         rs:true, rh:80},
-    {det:60,nud:36,res:null,sid:"school_2",aula:"Aula 105",dev:"shelly_1",tech:"shelly",ft:"off",     ch:"ivr",     ivr:"no_answer",rs:false,rh:null},
-    {det:30,nud:24,res:null,sid:"school_3",aula:"Aula 106",dev:"shelly_0",tech:"shelly",ft:"no_watts",ch:"sms",    ivr:"",         rs:false,rh:null},
-    {det:50,nud:30,res:30,sid:"school_3",aula:"Aula 106",dev:"shelly_0",tech:"shelly",ft:"no_watts", ch:"sms",     ivr:"",         rs:true, rh:20},
+    {alias:"one",     det:96, nud:72,res:66,  ft:"off",      ch:"whatsapp",ivr:"",         rs:true, rh:30},
+    {alias:"two",     det:40, nud:24,res:26,  ft:"no_watts", ch:"whatsapp",ivr:"",         rs:true, rh:14},
+    {alias:"three",   det:90, nud:48,res:38,  ft:"no_data",  ch:"ivr",     ivr:"1",        rs:true, rh:52},
+    {alias:"four",    det:120,nud:72,res:40,  ft:"off",      ch:"visit",   ivr:"",         rs:true, rh:80},
+    {alias:"shelly_1",det:60, nud:36,res:null,ft:"off",      ch:"ivr",     ivr:"no_answer",rs:false,rh:null},
+    {alias:"shelly_0",det:30, nud:24,res:null,ft:"no_watts", ch:"sms",     ivr:"",         rs:false,rh:null},
+    {alias:"shelly_0",det:50, nud:30,res:30,  ft:"no_watts", ch:"sms",     ivr:"",         rs:true, rh:20},
   ];
-  demo.forEach(x=>recs.push({detected:h(x.det),nudge_sent:x.nud!=null?h(x.nud):null,resolved_at:x.res!=null?h(x.res):null,
-    school_id:x.sid,aula:x.aula,flag_type:x.ft,tech:x.tech,alias:x.dev,channel:x.ch,nudge_status:"sent",response_ivr:x.ivr,resolved:x.rs,resolution_hours:x.rh}));
+  demo.forEach(x=>{const m=dmeta(x.alias);recs.push({detected:h(x.det),nudge_sent:x.nud!=null?h(x.nud):null,resolved_at:x.res!=null?h(x.res):null,
+    school_id:m.sid,aula:m.aula,flag_type:x.ft,tech:m.tech,alias:x.alias,channel:x.ch,nudge_status:"sent",response_ivr:x.ivr,resolved:x.rs,resolution_hours:x.rh});});
   return recs;
 }
 

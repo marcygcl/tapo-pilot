@@ -151,7 +151,7 @@ def read_all():
         cfg = SHELLY_DEVICES.get(dev_id, {})
         alias = cfg.get("alias") or names.get(dev_id) or dev_id
         aula = cfg.get("aula", "")
-        colegio = SCHOOLS_BY_ID.get(cfg.get("school_id"), "")
+        colegio = SCHOOLS_BY_ID.get(cfg.get("school_uid") or cfg.get("school_id"), "")
 
         is_on, watts, energy = extract(status)
 

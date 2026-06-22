@@ -86,5 +86,8 @@ SHELLY_DEVICES = {}
 for dev in CONFIG.get("shelly", {}).get("devices", []):
     SHELLY_DEVICES[dev["id"]] = dev
 
-# Nombre de colegio por id (para resolver 'colegio' a partir de school_id).
+# Nombre de colegio por id/uid (para resolver 'colegio' a partir de school_id o
+# school_uid). Incluye las escuelas sintéticas legacy y el maestro real de Bogotá.
 SCHOOLS_BY_ID = {s["id"]: s["name"] for s in CONFIG["schools"]}
+for _s in CONFIG.get("schools_master", []):
+    SCHOOLS_BY_ID[_s["school_uid"]] = _s["name"]

@@ -5,3 +5,6 @@ __pycache__/
 # Token cache de Emporia (pyemvue)
 .emporia_tokens.json
 **/.emporia_tokens.json
+
+# Stata/binarios de datos pesados
+data/*.dta
