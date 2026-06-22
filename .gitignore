@@ -9,6 +9,11 @@ __pycache__/
 # Stata/binarios de datos pesados
 data/*.dta
 
-# Diagnósticos locales (benchmark + discovery) — contienen internos del dispositivo
-# (WiFi SSID/BSSID/MAC/IP, geolocalización de cuenta); NO deben auto-commitearse.
-energy_logs/benchmark/
+# Diagnósticos locales en benchmark/ — discovery dumps con internos del dispositivo
+# (WiFi SSID/BSSID/MAC/IP, geolocalización). NO commitear, EXCEPTO los CSV de
+# resiliencia (esquema sin datos sensibles).
+energy_logs/benchmark/*
+!energy_logs/benchmark/resilience_test_*.csv
+
+# Script de debug Tapo con credenciales hardcodeadas — solo local, nunca commitear.
+scripts/test_tapo_cloud.py
