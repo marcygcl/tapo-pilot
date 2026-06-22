@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benchmark Emporia vs Shelly</title>
+<style>
+  :root{--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;
+        --emp:#639922;--she:#e8830c;--blue:#185fa5;--red:#a32d2d;--r:10px;}
+  @media(prefers-color-scheme:dark){:root{--bg:#181816;--surface:#222220;--border:rgba(255,255,255,.1);--text:#eeebe3;
+        --muted:#888780;--hint:#5f5e5a;--emp:#97c459;--she:#f0a85f;--blue:#85b7eb;--red:#f09595;}}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);
+       font-size:14px;line-height:1.5;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:.5px solid var(--border);background:var(--surface);}
+  .topbar h1{font-size:15px;font-weight:600;}.topbar p{font-size:11px;color:var(--muted);}
+  .topbar .right{font-size:11px;color:var(--hint);text-align:right;}
+  .tabs{display:flex;border-bottom:.5px solid var(--border);background:var(--surface);}
+  .tab{padding:10px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab:hover{color:var(--text);}.tab.active{color:var(--text);border-bottom-color:var(--text);}
+  .panel{display:none;flex:1;overflow-y:auto;padding:18px 22px;gap:18px;flex-direction:column;}.panel.active{display:flex;}
+  .section-title{font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px;}
+  .card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+  .metric{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px;}
+  .metric .lbl{font-size:11px;color:var(--muted);}
+  .metric .val{font-size:22px;font-weight:600;margin-top:2px;}
+  .metric .sub{font-size:11px;color:var(--hint);}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th{text-align:left;font-size:10px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;padding:7px 9px;border-bottom:.5px solid var(--border);}
+  td{padding:7px 9px;border-bottom:.5px solid var(--border);font-variant-numeric:tabular-nums;}
+  tr:last-child td{border-bottom:none;}
+  .pill{font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;color:#fff;text-transform:uppercase;}
+  .pill.emp{background:var(--emp);}.pill.she{background:var(--she);}
+  .on{color:var(--emp);font-weight:600;}.off{color:var(--red);}
+  .chart-box{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px;}
+  svg{width:100%;height:170px;display:block;}
+  .legend{font-size:11px;color:var(--muted);margin-top:6px;}
+  .legend .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+  .err{background:#fcebeb;color:#a32d2d;border:.5px solid #e24b4a;border-radius:var(--r);padding:12px 14px;font-size:13px;}
+  @media(prefers-color-scheme:dark){.err{background:#3a1414;color:#f09595;}}
+  code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
+  .tbd{border-left:3px solid var(--she);padding:8px 12px;margin-bottom:8px;background:var(--surface);border-radius:0 var(--r) var(--r) 0;}
+  .tbd b{color:var(--she);}
+  a{color:var(--blue);}
+  ul{margin:6px 0 6px 20px;} li{margin:3px 0;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div><h1>Benchmark · Emporia vs Shelly</h1><p>Lee CSVs locales de <code>energy_logs/benchmark/</code> · auto-refresh 60s</p></div>
+  <div class="right" id="status">—</div>
+</div>
+<div class="tabs">
+  <div class="tab active" data-t="live" onclick="tab('live',this)">1 · Benchmark en vivo</div>
+  <div class="tab" data-t="hist" onclick="tab('hist',this)">2 · Histórico</div>
+  <div class="tab" data-t="insights" onclick="tab('insights',this)">3 · Insights &amp; TODO</div>
+</div>
+
+<!-- TAB 1 -->
+<div class="panel active" id="p-live">
+  <div id="liveErr"></div>
+  <div class="metrics" id="liveMetrics"></div>
+  <div class="two">
+    <div class="chart-box"><div class="section-title">Watts en el tiempo · Emporia</div><div id="chartEmp"></div>
+      <div class="legend" id="legEmp"></div></div>
+    <div class="chart-box"><div class="section-title">Watts en el tiempo · Shelly</div><div id="chartShe"></div>
+      <div class="legend" id="legShe"></div></div>
+  </div>
+  <div class="card">
+    <div class="section-title">Lecturas recientes</div>
+    <table><thead><tr><th>Timestamp</th><th>Tech</th><th>Alias</th><th>Watts</th><th>On</th><th>Latencia</th></tr></thead>
+    <tbody id="liveTable"></tbody></table>
+  </div>
+</div>
+
+<!-- TAB 2 -->
+<div class="panel" id="p-hist">
+  <div id="histErr"></div>
+  <div class="card">
+    <div class="section-title">Rango histórico por tecnología</div>
+    <table><thead><tr><th>Tecnología</th><th>Endpoint</th><th>Rango disponible</th><th>Granularidad</th><th>Campos</th></tr></thead>
+    <tbody id="histSummary"></tbody></table>
+  </div>
+  <div class="two">
+    <div class="card"><div class="section-title">Emporia · sondeos de profundidad (escala día)</div>
+      <table><thead><tr><th>Rango</th><th>Buckets c/datos</th><th>kWh</th></tr></thead><tbody id="histEmp"></tbody></table></div>
+    <div class="card"><div class="section-title">Shelly · aenergy (all_status)</div><div id="histShe" style="font-size:13px;"></div></div>
+  </div>
+</div>
+
+<!-- TAB 3 -->
+<div class="panel" id="p-insights">
+  <div class="card">
+    <div class="section-title">Preguntas sin responder (TBD)</div>
+    <div class="tbd"><b>TBD:</b> ¿Shelly Cloud tiene un endpoint de estadísticas con rango histórico (consumo por día/hora)? <code>/device/all_status</code> solo da los últimos 3 min + total acumulado.</div>
+    <div class="tbd"><b>TBD:</b> ¿Emporia hace <i>backfill</i> real del consumo perdido tras un corte de internet, o solo reporta el estado actual? (correr <code>discover_resilience.py</code> con corte físico real).</div>
+    <div class="tbd"><b>TBD:</b> ¿Cuántos días retiene Emporia a escala <code>1S</code>/<code>1MIN</code>? El sondeo a 730 días devolvió error 400 (ventana máx ~365d por query a escala día).</div>
+    <div class="tbd"><b>TBD:</b> ¿La latencia de Emporia (~1.5s) baja consistentemente con menos reintentos de <code>get_device_list_usage</code>, o depende de si el dato del segundo ya está disponible?</div>
+    <div class="tbd"><b>TBD:</b> ¿Shelly expone temperatura/voltaje/frecuencia útiles para detectar fallas del filtro que Emporia no da? (discovery mostró <code>switch:0.temperature</code>, <code>voltage</code>, <code>freq</code>).</div>
+    <div class="tbd"><b>TBD:</b> ¿El contador <code>aenergy.total</code> de Shelly se resetea con reboots? Afecta el cálculo de <code>today_wh</code> por delta.</div>
+  </div>
+  <div class="two">
+    <div class="card">
+      <div class="section-title">Docs Emporia</div>
+      <ul>
+        <li><a href="https://github.com/magico13/PyEmVue" target="_blank">PyEmVue (librería Python)</a></li>
+        <li><a href="https://github.com/magico13/PyEmVue/blob/master/api_docs.md" target="_blank">API docs no oficiales (Emporia)</a></li>
+        <li>Métodos clave: <code>get_devices</code>, <code>get_device_list_usage</code>, <code>get_chart_usage</code>, <code>get_outlets</code>, <code>update_outlet</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="section-title">Docs Shelly</div>
+      <ul>
+        <li><a href="https://shelly-api-docs.shelly.cloud/" target="_blank">Shelly API docs (Gen1/2/3/4)</a></li>
+        <li><a href="https://shelly-api-docs.shelly.cloud/cloud-control-api/communication" target="_blank">Cloud Control API</a></li>
+        <li>Endpoint usado: <code>POST /device/all_status</code> · pendiente: endpoint de estadísticas/histórico</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Qué falta por investigar</div>
+    <ul>
+      <li>Correr el <b>test de resiliencia real</b> (desconectar el router físicamente) y medir time-to-fail / time-to-recover / backfill.</li>
+      <li>Encontrar y probar el <b>endpoint de histórico de Shelly Cloud</b> (consumo por día).</li>
+      <li>Dejar el <b>benchmark continuo</b> corriendo ≥24h y analizar deriva de latencia y consistencia de watts.</li>
+      <li>Validar la <b>sensibilidad</b> con carga real (los plugs ahora leen ~0 W sin filtro conectado).</li>
+      <li>Decidir métrica canónica de <code>today_wh</code> para Shelly (delta de <code>aenergy.total</code> con persistencia de baseline).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const BENCH="energy_logs/benchmark", HIST="energy_logs";
+const MAX_CSVS=20;
+let _timer=null;
+
+function tab(id,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("p-"+id).classList.add("active");
+  if(id==="hist")loadHist();
+}
+
+const num=v=>{const n=parseFloat(v);return isNaN(n)?null:n;};
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/); if(lines.length<2)return [];
+  const hdr=lines[0].split(",");
+  return lines.slice(1).map(l=>{const c=l.split(",");const o={};hdr.forEach((h,i)=>o[h]=c[i]);return o;});
+}
+function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:null;}
+function stdev(a){if(a.length<1)return null;const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/a.length);}
+const f1=v=>v==null?"—":v.toFixed(1), f2=v=>v==null?"—":v.toFixed(2);
+
+// ---- SVG line chart (vanilla) ----
+function lineChart(target, series){
+  const el=document.getElementById(target); el.innerHTML="";
+  const W=600,H=170,P=26;
+  const allPts=series.flatMap(s=>s.points);
+  if(!allPts.length){el.innerHTML='<svg viewBox="0 0 600 170"><text x="300" y="90" text-anchor="middle" fill="#999" font-size="13">sin datos aún</text></svg>';return;}
+  const xs=allPts.map(p=>p.x), ys=allPts.map(p=>p.y);
+  let xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys,0),ymax=Math.max(...ys,1);
+  if(xmax===xmin)xmax=xmin+1; if(ymax===ymin)ymax=ymin+1;
+  const X=x=>P+(x-xmin)/(xmax-xmin)*(W-2*P), Y=y=>H-P-(y-ymin)/(ymax-ymin)*(H-2*P);
+  const grid=`<line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="rgba(128,128,128,.3)"/>
+              <line x1="${P}" y1="${P}" x2="${P}" y2="${H-P}" stroke="rgba(128,128,128,.3)"/>
+              <text x="${P-4}" y="${Y(ymax)+4}" text-anchor="end" font-size="9" fill="#999">${ymax.toFixed(1)}</text>
+              <text x="${P-4}" y="${H-P}" text-anchor="end" font-size="9" fill="#999">${ymin.toFixed(1)}</text>`;
+  const lines=series.map(s=>{
+    if(!s.points.length)return"";
+    const d=s.points.map((p,i)=>(i?"L":"M")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)).join(" ");
+    const dots=s.points.map(p=>`<circle cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="2" fill="${s.color}"/>`).join("");
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.8"/>${dots}`;
+  }).join("");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${lines}</svg>`;
+}
+
+async function loadLive(){
+  const errEl=document.getElementById("liveErr"); errEl.innerHTML="";
+  let manifest;
+  try{
+    manifest=await (await fetch(`${BENCH}/manifest.json?t=`+Date.now())).json();
+  }catch(e){
+    errEl.innerHTML=`<div class="err">No se pudo leer <code>${BENCH}/manifest.json</code>.
+      Sirve el repo localmente y abre por HTTP:<br>
+      <code>cd ${"$"}(git rev-parse --show-toplevel) && python3 -m http.server 8000</code><br>
+      luego abre <code>http://localhost:8000/dashboard_benchmark.html</code>.
+      El manifest lo genera <code>collectors/benchmark.py</code> al correr.</div>`;
+    return;
+  }
+  const files=(manifest.files||[]).slice(-MAX_CSVS);
+  const rows=[];
+  for(const f of files){
+    try{
+      const txt=await (await fetch(`${BENCH}/${f}?t=`+Date.now())).text();
+      parseCSV(txt).forEach(r=>rows.push(r));
+    }catch(e){}
+  }
+  rows.sort((a,b)=>a.timestamp<b.timestamp?-1:1);
+
+  // métricas por tech
+  const mk=tech=>{
+    const rt=rows.filter(r=>r.technology===tech);
+    const watts=rt.map(r=>num(r.watts)).filter(v=>v!=null);
+    const lats=[...new Set(rt.map(r=>r.timestamp+"|"+r.latency_ms))].map(k=>num(k.split("|")[1])).filter(v=>v!=null);
+    return {n:rt.length, watts, lats, latAvg:mean(lats), wMin:watts.length?Math.min(...watts):null,
+            wMax:watts.length?Math.max(...watts):null, wStd:stdev(watts)};
+  };
+  const e=mk("emporia"), s=mk("shelly");
+  document.getElementById("liveMetrics").innerHTML=[
+    ["Lecturas cargadas", `${e.n+s.n}`, `${files.length} CSV · EMP ${e.n} · SHE ${s.n}`],
+    ["Latencia media EMP", e.latAvg!=null?`${e.latAvg.toFixed(0)} ms`:"—", "Emporia"],
+    ["Latencia media SHE", s.latAvg!=null?`${s.latAvg.toFixed(0)} ms`:"—", "Shelly"],
+    ["Sensibilidad EMP", `${f2(e.wMin)}–${f2(e.wMax)} W`, `σ ${f2(e.wStd)} W`],
+    ["Sensibilidad SHE", `${f2(s.wMin)}–${f2(s.wMax)} W`, `σ ${f2(s.wStd)} W`],
+  ].map(([l,v,sub])=>`<div class="metric"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${sub}</div></div>`).join("");
+
+  // charts: avg watts por tech por timestamp
+  const avgSeries=tech=>{
+    const byTs={};
+    rows.filter(r=>r.technology===tech).forEach(r=>{const w=num(r.watts);if(w!=null)(byTs[r.timestamp]=byTs[r.timestamp]||[]).push(w);});
+    return Object.keys(byTs).sort().map(ts=>({x:new Date(ts).getTime(), y:mean(byTs[ts])}));
+  };
+  lineChart("chartEmp",[{color:getComputedStyle(document.documentElement).getPropertyValue("--emp"),points:avgSeries("emporia")}]);
+  lineChart("chartShe",[{color:getComputedStyle(document.documentElement).getPropertyValue("--she"),points:avgSeries("shelly")}]);
+  document.getElementById("legEmp").innerHTML='<span class="dot" style="background:var(--emp)"></span>watts promedio (4 devices)';
+  document.getElementById("legShe").innerHTML='<span class="dot" style="background:var(--she)"></span>watts promedio (2 devices)';
+
+  // tabla recientes
+  const recent=rows.slice(-30).reverse();
+  document.getElementById("liveTable").innerHTML=recent.map(r=>`<tr>
+    <td>${(r.timestamp||"").slice(11,19)}</td>
+    <td><span class="pill ${r.technology==="emporia"?"emp":"she"}">${r.technology==="emporia"?"EMP":"SHE"}</span></td>
+    <td>${r.alias||""}</td>
+    <td>${f2(num(r.watts))}</td>
+    <td class="${r.is_on==="1"?"on":"off"}">${r.is_on==="1"?"ON":(r.is_on===""?"—":"OFF")}</td>
+    <td>${r.latency_ms||"—"} ms</td></tr>`).join("")||'<tr><td colspan="6" style="color:var(--hint)">sin lecturas</td></tr>';
+
+  document.getElementById("status").innerHTML=`Actualizado ${new Date().toLocaleTimeString()} · manifest: ${manifest.updated||"?"}`;
+}
+
+async function loadHist(){
+  const errEl=document.getElementById("histErr"); errEl.innerHTML="";
+  let emp=null,she=null;
+  try{ emp=await (await fetch(`${HIST}/emporia_historical_sample.json?t=`+Date.now())).json(); }catch(e){}
+  try{ she=await (await fetch(`${HIST}/shelly_historical_sample.json?t=`+Date.now())).json(); }catch(e){}
+  if(!emp&&!she){errEl.innerHTML=`<div class="err">No se pudieron leer las muestras de histórico. Corre
+    <code>uv run python collectors/explore_historical.py</code> y sirve el repo por HTTP.</div>`;}
+
+  const rng=emp?(()=>{const d=(emp.depth_probes_by_day_scale||[]).filter(p=>p.non_null);
+    const md=Math.max(0,...d.map(p=>p.requested_days));return md?`≥ ${md} días`:"sin datos";})():"—";
+  document.getElementById("histSummary").innerHTML=`
+    <tr><td><span class="pill emp">EMP</span> Emporia</td><td>get_chart_usage()</td><td>${rng}</td>
+        <td>día → hora</td><td>${emp?emp.fields.join(", "):"—"}</td></tr>
+    <tr><td><span class="pill she">SHE</span> Shelly</td><td>/device/all_status</td>
+        <td>${she?"solo últimos 3 min + total":"—"}</td><td>1 min (×3)</td><td>${she?she.fields.join(", "):"—"}</td></tr>`;
+
+  document.getElementById("histEmp").innerHTML=emp?(emp.depth_probes_by_day_scale||[]).map(p=>
+    `<tr><td>${p.requested_days}d</td><td>${p.error?'<span class="off">error</span>':p.non_null+"/"+p.buckets_returned}</td>
+     <td>${p.sum_kwh!=null?p.sum_kwh:"—"}</td></tr>`).join(""):'<tr><td colspan="3">—</td></tr>';
+
+  const h=she?she.history_available_in_all_status:null;
+  document.getElementById("histShe").innerHTML=she?`
+    <p><b>total acumulado:</b> ${h["aenergy.total_wh"]} Wh</p>
+    <p><b>by_minute</b> (últimos 3 min, mWh): ${JSON.stringify(h["aenergy.by_minute"])}</p>
+    <p style="color:var(--hint);margin-top:8px;font-size:12px;">${she.note}</p>`:"—";
+}
+
+// arranque
+loadLive();
+_timer=setInterval(()=>{ if(document.getElementById("p-live").classList.contains("active")) loadLive(); }, 60000);
+</script>
+</body>
+</html>

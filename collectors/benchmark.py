@@ -1,22 +1,29 @@
-"""Benchmark comparativo Emporia vs Shelly.
+"""Benchmark continuo Emporia vs Shelly.
 
-Corre una lectura de ambas tecnologías cada 30s durante 5 min (configurable),
-mide la latencia de cada API, guarda todas las lecturas en
-energy_logs/benchmark/YYYY-MM-DD-HH-MM-SS.csv y al final imprime un resumen
-comparativo (sensibilidad, latencia, consistencia/gaps).
+Corre INDEFINIDAMENTE (hasta Ctrl+C): cada `period` (default 30 min) ejecuta un
+ciclo de benchmark de `cycle-duration` (default 5 min) leyendo ambas tecnologías
+cada `interval` (default 30s). Cada ciclo genera un CSV nuevo en
+energy_logs/benchmark/YYYY-MM-DD-HH-MM-SS.csv y al final del ciclo imprime un
+resumen (sensibilidad, latencia, consistencia/gaps).
 
 Uso:
-    uv run python collectors/benchmark.py                 # 30s x 5 min (default)
-    uv run python collectors/benchmark.py --interval 30 --duration 300
-    uv run python collectors/benchmark.py --interval 2 --duration 6   # prueba rápida
+    # Lanzar en segundo plano (recomendado):
+    nohup uv run python collectors/benchmark.py > benchmark.log 2>&1 &
+    # Detener:
+    pkill -f "python collectors/benchmark.py"
 
-CSV: timestamp, device, technology, alias, is_on, watts, today_wh, latency_ms
+    uv run python collectors/benchmark.py                 # indefinido: 5 min cada 30 min
+    uv run python collectors/benchmark.py --once          # un solo ciclo de 5 min
+    uv run python collectors/benchmark.py --quick         # ciclos cortos (prueba)
+
+CSV por ciclo: timestamp, device, technology, alias, is_on, watts, today_wh, latency_ms
 """
 
 import argparse
 import csv
 import datetime
 import json
+import signal
 import statistics
 import sys
 import time
@@ -224,52 +231,58 @@ def print_summary(stats, n_cycles, out_path):
     console.print(f"\n[dim]CSV guardado en:[/dim] {out_path}")
 
 
-# ----------------------------- main -----------------------------------
-def main(interval, duration):
-    console.rule("[bold]Benchmark Emporia vs Shelly[/bold]")
-    have_emp = bool(EMPORIA_EMAIL and EMPORIA_PASSWORD)
-    have_she = bool(SHELLY_SERVER and SHELLY_AUTH_KEY)
-    if not have_emp:
-        console.print("[yellow]Aviso: faltan credenciales Emporia; se omite esa tecnología.[/yellow]")
-    if not have_she:
-        console.print("[yellow]Aviso: faltan credenciales Shelly; se omite esa tecnología.[/yellow]")
-    if not (have_emp or have_she):
-        console.print("[red]No hay credenciales de ninguna tecnología. Nada que medir.[/red]")
-        return 1
+# --------------------------- loop / ciclos ----------------------------
+running = True
 
+
+def _handle_sigint(sig, frame):
+    global running
+    if running:
+        console.print("\n[yellow]Ctrl+C recibido — terminando el ciclo/espera actual de forma limpia...[/yellow]")
+    running = False
+
+
+def sleep_interruptible(secs):
+    """Duerme `secs` en pasos de 1s, abortando si llega Ctrl+C."""
+    end = time.monotonic() + secs
+    while running and time.monotonic() < end:
+        time.sleep(min(1.0, max(0.0, end - time.monotonic())))
+
+
+def update_manifest():
+    """Reescribe manifest.json con la lista de CSVs de ciclo (lo lee dashboard_benchmark.html)."""
+    bdir = ROOT / "energy_logs" / "benchmark"
+    files = sorted(p.name for p in bdir.glob("*.csv")
+                   if p.name[:1].isdigit() and not p.name.startswith("resilience"))
+    (bdir / "manifest.json").write_text(json.dumps(
+        {"updated": now_bogota().isoformat(timespec="seconds"), "files": files}, ensure_ascii=False))
+
+
+def run_cycle(interval, duration, vue, have_emp, have_she):
+    """Un ciclo de benchmark de `duration`s; escribe un CSV nuevo y devuelve (vue, out_path)."""
     ts0 = now_bogota()
     out_dir = ROOT / "energy_logs" / "benchmark"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{ts0.strftime('%Y-%m-%d-%H-%M-%S')}.csv"
-
-    vue = None
-    if have_emp:
-        try:
-            vue = emporia_connect()
-        except Exception as e:
-            console.print(f"[red]Login Emporia falló:[/red] {e}")
-            have_emp = False
 
     stats = {
         "emporia": {"watts": [], "lat": [], "ok": 0, "n_devices": len(EMPORIA_DEVICES) if have_emp else 0},
         "shelly": {"watts": [], "lat": [], "ok": 0, "n_devices": len(SHELLY_DEVICES) if have_she else 0},
     }
     shelly_baseline = {}
-
-    console.print(f"Intervalo {interval}s · duración {duration}s · CSV: {out_path.name}\n")
+    console.print(f"[dim]Intervalo {interval}s · duración {duration}s · CSV: {out_path.name}[/dim]")
     f = open(out_path, "w", newline="")
     writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
     writer.writeheader()
 
-    cycle = 0
+    reads = 0
     start = time.monotonic()
     try:
-        while True:
-            cycle += 1
+        while running:
+            reads += 1
             ts = now_bogota().isoformat(timespec="seconds")
-            line = f"[dim]#{cycle}[/dim] {ts[11:19]}"
+            line = f"[dim]#{reads}[/dim] {ts[11:19]}"
 
-            # --- Emporia ---
             if have_emp:
                 try:
                     rows, lat = emporia_read(vue)
@@ -284,11 +297,10 @@ def main(interval, duration):
                 except Exception as e:
                     line += f" · [red]EMP error[/red] ({str(e)[:40]})"
                     try:
-                        vue = emporia_connect()  # reintento de sesión
+                        vue = emporia_connect()
                     except Exception:
                         pass
 
-            # --- Shelly ---
             if have_she:
                 try:
                     rows, lat = shelly_read(shelly_baseline)
@@ -306,23 +318,78 @@ def main(interval, duration):
             f.flush()
             console.print(line)
 
-            elapsed = time.monotonic() - start
-            remaining = duration - elapsed
-            if remaining <= 0:
+            if time.monotonic() - start >= duration:
                 break
-            time.sleep(min(interval, remaining))
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Interrumpido — generando resumen con lo recolectado...[/yellow]")
+            sleep_interruptible(min(interval, duration - (time.monotonic() - start)))
     finally:
         f.close()
 
-    print_summary(stats, cycle, out_path)
+    update_manifest()
+    print_summary(stats, reads, out_path)
+    return vue, out_path
+
+
+# ----------------------------- main -----------------------------------
+def main(args):
+    if args.quick:
+        interval, cycle_duration, period = 2, 10, 30
+    else:
+        interval, cycle_duration, period = args.interval, args.cycle_duration, args.period
+
+    console.rule("[bold]Benchmark continuo Emporia vs Shelly[/bold]")
+    have_emp = bool(EMPORIA_EMAIL and EMPORIA_PASSWORD)
+    have_she = bool(SHELLY_SERVER and SHELLY_AUTH_KEY)
+    if not have_emp:
+        console.print("[yellow]Aviso: faltan credenciales Emporia; se omite esa tecnología.[/yellow]")
+    if not have_she:
+        console.print("[yellow]Aviso: faltan credenciales Shelly; se omite esa tecnología.[/yellow]")
+    if not (have_emp or have_she):
+        console.print("[red]No hay credenciales de ninguna tecnología. Nada que medir.[/red]")
+        return 1
+
+    vue = None
+    if have_emp:
+        try:
+            vue = emporia_connect()
+        except Exception as e:
+            console.print(f"[red]Login Emporia falló:[/red] {e}")
+            have_emp = False
+
+    signal.signal(signal.SIGINT, _handle_sigint)
+    signal.signal(signal.SIGTERM, _handle_sigint)
+
+    mode = "una vez" if args.once else f"indefinido · ciclo de {cycle_duration//60 or cycle_duration} min cada {period//60 or period} min"
+    console.print(f"Modo: {mode} · Ctrl+C para detener\n")
+
+    cycle = 0
+    while running:
+        cycle += 1
+        t_start = now_bogota()
+        console.rule(f"[bold cyan]Ciclo {cycle}[/bold cyan]")
+        vue, _ = run_cycle(interval, cycle_duration, vue, have_emp, have_she)
+        t_end = now_bogota()
+
+        if args.once or (args.max_cycles and cycle >= args.max_cycles) or not running:
+            break
+
+        wait = max(0, period - cycle_duration)
+        console.print(
+            f"\n[bold]Ciclo {cycle} · {t_start.strftime('%H:%M')}-{t_end.strftime('%H:%M')} · "
+            f"Esperando próximo en {wait // 60} min...[/bold]\n"
+        )
+        sleep_interruptible(wait)
+
+    console.print(f"\n[green]Detenido tras {cycle} ciclo(s).[/green]")
     return 0
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="Benchmark Emporia vs Shelly")
-    p.add_argument("--interval", type=int, default=30, help="segundos entre lecturas (default 30)")
-    p.add_argument("--duration", type=int, default=300, help="duración total en segundos (default 300)")
+    p = argparse.ArgumentParser(description="Benchmark continuo Emporia vs Shelly")
+    p.add_argument("--interval", type=int, default=30, help="segundos entre lecturas dentro del ciclo (default 30)")
+    p.add_argument("--cycle-duration", type=int, default=300, help="duración de cada ciclo en s (default 300 = 5 min)")
+    p.add_argument("--period", type=int, default=1800, help="cada cuántos s arranca un ciclo (default 1800 = 30 min)")
+    p.add_argument("--once", action="store_true", help="corre un solo ciclo y termina")
+    p.add_argument("--max-cycles", type=int, default=0, help="máximo de ciclos (0 = indefinido)")
+    p.add_argument("--quick", action="store_true", help="ciclos cortos para prueba (10s cada 30s, intervalo 2s)")
     args = p.parse_args()
-    sys.exit(main(args.interval, args.duration))
+    sys.exit(main(args))

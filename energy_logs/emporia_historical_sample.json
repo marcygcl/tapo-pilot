@@ -1,0 +1,179 @@
+{
+  "_source": "pyemvue.get_chart_usage(channel Main, scale=1D, unit=kWh)",
+  "device_gid": 606961,
+  "channel": "1,2,3",
+  "queried_end_utc": "2026-06-22T03:01:41.872125+00:00",
+  "depth_probes_by_day_scale": [
+    {
+      "requested_days": 7,
+      "buckets_returned": 8,
+      "non_null": 8,
+      "sum_kwh": 0.048,
+      "start_time": "2026-06-14T05:00:00+00:00"
+    },
+    {
+      "requested_days": 30,
+      "buckets_returned": 31,
+      "non_null": 22,
+      "sum_kwh": 0.316,
+      "start_time": "2026-05-22T05:00:00+00:00"
+    },
+    {
+      "requested_days": 90,
+      "buckets_returned": 91,
+      "non_null": 22,
+      "sum_kwh": 0.316,
+      "start_time": "2026-03-23T05:00:00+00:00"
+    },
+    {
+      "requested_days": 365,
+      "buckets_returned": 366,
+      "non_null": 22,
+      "sum_kwh": 0.316,
+      "start_time": "2025-06-21T05:00:00+00:00"
+    },
+    {
+      "requested_days": 730,
+      "error": "400 Client Error:  for url: https://api.emporiaenergy.com/AppAPI?apiMethod=getCh"
+    }
+  ],
+  "hourly_resolution_last_24h": {
+    "buckets": 24,
+    "non_null": 24,
+    "scale": "1H",
+    "first_start": "2026-06-21T03:00:00+00:00"
+  },
+  "fields": [
+    "timestamp",
+    "usage_kwh"
+  ],
+  "sample_scale": "1D (día)",
+  "buckets_30d": 31,
+  "non_null_30d": 22,
+  "data_30d": [
+    {
+      "timestamp": "2026-05-22T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-23T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-24T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-25T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-26T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-27T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-28T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-29T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-30T05:00:00+00:00",
+      "usage_kwh": null
+    },
+    {
+      "timestamp": "2026-05-31T05:00:00+00:00",
+      "usage_kwh": 0.055883780095031574
+    },
+    {
+      "timestamp": "2026-06-01T05:00:00+00:00",
+      "usage_kwh": 0.09019821021857449
+    },
+    {
+      "timestamp": "2026-06-02T05:00:00+00:00",
+      "usage_kwh": 0.12227578409801212
+    },
+    {
+      "timestamp": "2026-06-03T05:00:00+00:00",
+      "usage_kwh": 3.606759585458442e-05
+    },
+    {
+      "timestamp": "2026-06-04T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-05T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-06T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-07T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-08T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-09T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-12T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-13T05:00:00+00:00",
+      "usage_kwh": 0.0
+    },
+    {
+      "timestamp": "2026-06-14T05:00:00+00:00",
+      "usage_kwh": 1.0750022549026074e-07
+    },
+    {
+      "timestamp": "2026-06-15T05:00:00+00:00",
+      "usage_kwh": 8.831434327620545e-07
+    },
+    {
+      "timestamp": "2026-06-16T05:00:00+00:00",
+      "usage_kwh": 8.831434327620545e-07
+    },
+    {
+      "timestamp": "2026-06-17T05:00:00+00:00",
+      "usage_kwh": 8.831434327620545e-07
+    },
+    {
+      "timestamp": "2026-06-18T05:00:00+00:00",
+      "usage_kwh": 8.831434327620545e-07
+    },
+    {
+      "timestamp": "2026-06-19T05:00:00+00:00",
+      "usage_kwh": 8.831434327620545e-07
+    },
+    {
+      "timestamp": "2026-06-20T05:00:00+00:00",
+      "usage_kwh": 8.831434327620545e-07
+    },
+    {
+      "timestamp": "2026-06-21T05:00:00+00:00",
+      "usage_kwh": 0.04755567609143123
+    }
+  ]
+}

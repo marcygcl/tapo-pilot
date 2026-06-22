@@ -1,0 +1,35 @@
+{
+  "_source": "/device/all_status (Shelly Cloud) — NO hay endpoint de rango histórico aquí",
+  "device_id": "acebe6f4b44c",
+  "model_code": "S4PL-00116US",
+  "exposes_date_range_history": false,
+  "history_available_in_all_status": {
+    "aenergy.total_wh": 199.125,
+    "aenergy.by_minute": [
+      0,
+      0,
+      0
+    ],
+    "aenergy.minute_ts": 1782097260
+  },
+  "fields": [
+    "timestamp",
+    "milliwatt_hours (by_minute)",
+    "total_wh (acumulado)"
+  ],
+  "last_3min_series": [
+    {
+      "timestamp": "2026-06-22T03:01:00+00:00",
+      "milliwatt_hours": 0
+    },
+    {
+      "timestamp": "2026-06-22T03:00:00+00:00",
+      "milliwatt_hours": 0
+    },
+    {
+      "timestamp": "2026-06-22T02:59:00+00:00",
+      "milliwatt_hours": 0
+    }
+  ],
+  "note": "all_status solo expone aenergy.by_minute (3 buckets de 1 min) y el contador acumulado aenergy.total. Para histórico real con rango de fechas se necesita otro endpoint del cloud Shelly (estadísticas/consumo), no /device/all_status."
+}
