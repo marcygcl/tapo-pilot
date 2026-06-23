@@ -19,7 +19,7 @@
     .lang-toggle button.active{color:var(--text);text-decoration:underline;}
     .wrap{padding:20px 24px;display:flex;flex-direction:column;gap:20px;max-width:1200px;margin:0 auto;}
     .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    .cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;}
     .chart-box{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px;}
     .alert-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:12px;}
     .alert-table th{text-align:left;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:.5px solid var(--border);background:var(--bg);}
@@ -37,7 +37,7 @@
     .aire-line svg{width:100%;height:260px;display:block;}
     .err{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-mid);border-radius:var(--r);padding:11px 14px;font-size:12.5px;}
     .err code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
-    @media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+    @media(max-width:1000px){.cols3{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
@@ -65,12 +65,18 @@
 
   <div id="aireErr"></div>
 
-  <div class="two-col">
+  <div class="cols3">
     <div class="chart-box">
       <div class="section-title" id="secSchool" style="margin-bottom:10px;"></div>
       <div class="aire-line" id="aireChartSchool"></div>
       <div class="cmp-legend" id="aireLegSchool"></div>
       <table class="alert-table" id="aireStatsSchool"></table>
+    </div>
+    <div class="chart-box">
+      <div class="section-title" id="secExt" style="margin-bottom:10px;"></div>
+      <div class="aire-line" id="aireChartExt"></div>
+      <div class="cmp-legend" id="aireLegExt"></div>
+      <table class="alert-table" id="aireStatsExt"></table>
     </div>
     <div class="chart-box">
       <div class="section-title" id="sec24" style="margin-bottom:10px;"></div>
@@ -100,6 +106,7 @@ const I18N={
     intro:`Air quality (PM2.5): <b style="color:#3b6d11">Room 19 with Sqair filter</b> vs <b style="color:#e8830c">room without filter</b> (reference). Data from the PurpleAir collector.`,
     from:"From", to:"To", refresh:"Refresh",
     schoolTitle:"School hours (Mon–Fri 6:30am–3:00pm)",
+    extTitle:"Extended hours (Mon–Fri 6:30am–5:00pm)",
     dayTitle:"24 hours (all · grey band = school hours)",
     sensor_filter:"Room 19 (with filter)",
     sensor_ref:"Room without filter",
@@ -123,6 +130,7 @@ const I18N={
     intro:`Calidad del aire (PM2.5): <b style="color:#3b6d11">Aula 19 con filtro Sqair</b> vs <b style="color:#e8830c">Aula sin filtro</b> (referencia). Datos del collector PurpleAir.`,
     from:"Desde", to:"Hasta", refresh:"Actualizar",
     schoolTitle:"Horario escolar (L–V 6:30–15:00)",
+    extTitle:"Horario extendido (L–V 6:30–17:00)",
     dayTitle:"24 horas (todas · banda gris = horario escolar)",
     sensor_filter:"Aula 19 (con filtro)",
     sensor_ref:"Aula sin filtro",
@@ -147,13 +155,15 @@ const AIRE_SENSORS=[
   {id:AIRE_REF,key:"sensor_ref",color:"#e8830c"},
 ];
 const sLabel=s=>T()[s.key];
-const SCHOOL_MIN_START=390, SCHOOL_MIN_END=900;   // 6:30–15:00 en minutos
+const SCHOOL_MIN_START=390, SCHOOL_MIN_END=900, SCHOOL_MIN_END_EXT=1020;   // 6:30 / 15:00 / 17:00 en minutos
 const AIRE_MAX_GAP_MS=60*60*1000;                 // corta la línea si hay un hueco > 1h (sin puentes falsos)
 const _pad=n=>String(n).padStart(2,"0");
 const _aireMean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const _aireMedian=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
 const af1=v=>v==null?"—":(+v).toFixed(1);
-const isSchool=r=>r.tp.dow>=1&&r.tp.dow<=5&&r.tp.minutes>=SCHOOL_MIN_START&&r.tp.minutes<=SCHOOL_MIN_END;
+const inWindow=(r,a,b)=>r.tp.dow>=1&&r.tp.dow<=5&&r.tp.minutes>=a&&r.tp.minutes<=b;
+const isSchool=r=>inWindow(r,SCHOOL_MIN_START,SCHOOL_MIN_END);
+const isSchoolExt=r=>inWindow(r,SCHOOL_MIN_START,SCHOOL_MIN_END_EXT);
 
 // PM2.5 -> color por banda (referencia EPA/OMS, µg/m³).
 function pmColor(v){
@@ -242,6 +252,7 @@ function applyStaticI18n(){
   document.getElementById("lblTo").textContent=L.to;
   document.getElementById("btnRefresh").textContent=L.refresh;
   document.getElementById("secSchool").textContent=L.schoolTitle;
+  document.getElementById("secExt").textContent=L.extTitle;
   document.getElementById("sec24").textContent=L.dayTitle;
   document.getElementById("langEn").classList.toggle("active",LANG==="en");
   document.getElementById("langEs").classList.toggle("active",LANG==="es");
@@ -276,12 +287,12 @@ async function loadAire(){
 
 function renderAire(){
   document.getElementById("aireStatus").textContent=T().status(_rows.length,_dates.length);
-  const clearIds=["aireStatsSchool","aireStats24","aireLegSchool","aireLeg24"];
+  const clearIds=["aireStatsSchool","aireStatsExt","aireStats24","aireLegSchool","aireLegExt","aireLeg24"];
   const errEl=document.getElementById("aireErr");errEl.innerHTML="";
   if(!_rows.length){
     errEl.innerHTML=T().errHtml;
     clearIds.forEach(id=>document.getElementById(id).innerHTML="");
-    aireChart("aireChartSchool",[]);aireChart("aireChart24",[]);return;
+    aireChart("aireChartSchool",[]);aireChart("aireChartExt",[]);aireChart("aireChart24",[]);return;
   }
 
   const seriesFrom=src=>AIRE_SENSORS.map(s=>({color:s.color,points:src.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25}))}));
@@ -293,11 +304,17 @@ function renderAire(){
   _dates.forEach(d=>{const [y,mo,da]=d.split("-").map(Number);const dow=new Date(Date.UTC(y,mo-1,da)).getUTCDay();
     if(dow>=1&&dow<=5)bands.push({x0:new Date(`${d}T06:30:00-05:00`).getTime(),x1:new Date(`${d}T15:00:00-05:00`).getTime()});});
 
-  // Izquierda: solo horario escolar.
+  // Izquierda: horario escolar (6:30–15:00).
   const schoolRows=_rows.filter(isSchool);
   aireChart("aireChartSchool",seriesFrom(schoolRows));
   document.getElementById("aireLegSchool").innerHTML=legend(false);
   document.getElementById("aireStatsSchool").innerHTML=aireStatsTable(schoolRows);
+
+  // Centro: horario extendido (6:30–17:00).
+  const extRows=_rows.filter(isSchoolExt);
+  aireChart("aireChartExt",seriesFrom(extRows));
+  document.getElementById("aireLegExt").innerHTML=legend(false);
+  document.getElementById("aireStatsExt").innerHTML=aireStatsTable(extRows);
 
   // Derecha: 24 horas (todas) con banda escolar sombreada.
   aireChart("aireChart24",seriesFrom(_rows),bands);
