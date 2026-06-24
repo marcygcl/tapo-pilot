@@ -74,6 +74,10 @@
     <div class="aire-line" id="aireChart"></div>
     <div class="cmp-legend" id="aireLeg"></div>
     <table class="alert-table" id="aireStats"></table>
+    <div id="aireSig" style="margin-top:14px;font-size:12.5px;"></div>
+    <div class="section-title" id="secCanon" style="margin-top:20px;margin-bottom:8px;"></div>
+    <table class="alert-table" id="aireCanon"></table>
+    <div id="aireMethod" style="font-size:10.5px;color:var(--hint);margin-top:8px;"></div>
   </div>
 </div>
 
@@ -102,6 +106,15 @@ const I18N={
     th_sensor:"Sensor", th_avg:"Avg", th_median:"Median", th_min:"Min", th_max:"Max", th_n:"n",
     diff:"Difference (without − with)",
     noDiff:"not enough data in this window",
+    sigTitle:"Selected window — paired t-test (filter − reference, matched by timestamp)",
+    significant:"Significant at p<0.05", notSignificant:"Not significant",
+    pairs:"pairs",
+    eff:["negligible","small","medium","large"],
+    canonTitle:"Significance by canonical window (precomputed)",
+    th_window:"Window", th_npairs:"n pairs", th_sig:"Result", sigShort:"p<0.05", nsShort:"ns",
+    win_school:"School (Mon–Fri 6:30–15:00)", win_extended:"Extended (Mon–Fri 6:30–17:00)", win_all:"24 hours", win_outside:"Outside (17:00–6:30)",
+    statsErr:`stats file not found — run <code>collectors/purpleair_stats.py</code> and push`,
+    methodNote:"Paired t-test (filter − reference) pairing by timestamp; pairing controls for day-of-week and hour-of-day. Observational: two different rooms, so room differences beyond the filter are confounded.",
     loading:"loading…",
     noChartData:"no data in the selected range",
     status:(n,d)=>`${n} readings · ${d} day(s)`,
@@ -124,6 +137,15 @@ const I18N={
     th_sensor:"Sensor", th_avg:"Prom", th_median:"Mediana", th_min:"Mín", th_max:"Máx", th_n:"n",
     diff:"Diferencia (sin − con)",
     noDiff:"datos insuficientes en esta ventana",
+    sigTitle:"Ventana seleccionada — paired t-test (filtro − referencia, pareado por timestamp)",
+    significant:"Significativo (p<0.05)", notSignificant:"No significativo",
+    pairs:"pares",
+    eff:["insignificante","pequeño","mediano","grande"],
+    canonTitle:"Significancia por ventana canónica (precalculado)",
+    th_window:"Ventana", th_npairs:"n pares", th_sig:"Resultado", sigShort:"p<0.05", nsShort:"ns",
+    win_school:"Escolar (L–V 6:30–15:00)", win_extended:"Extendido (L–V 6:30–17:00)", win_all:"24 horas", win_outside:"Fuera (17:00–6:30)",
+    statsErr:`archivo de stats no encontrado — corré <code>collectors/purpleair_stats.py</code> y hacé push`,
+    methodNote:"Paired t-test (filtro − referencia) pareado por timestamp; el pareo controla por día de la semana y hora del día. Observacional: son dos aulas distintas, así que diferencias entre cuartos más allá del filtro quedan confundidas.",
     loading:"cargando…",
     noChartData:"sin datos en el rango seleccionado",
     status:(n,d)=>`${n} lecturas · ${d} día(s)`,
@@ -233,6 +255,69 @@ function aireStatsTable(rows){
   return `<thead><tr><th>${L.th_sensor}</th><th class="num">${L.th_avg}</th><th class="num">${L.th_median}</th><th class="num">${L.th_min}</th><th class="num">${L.th_max}</th><th class="num">${L.th_n}</th></tr></thead><tbody>${by.map(row).join("")}${diff}</tbody>`;
 }
 
+// ---- paired t-test (mismo cálculo que collectors/purpleair_stats.py) ----
+// p-valor a dos colas de Student-t vía beta incompleta regularizada (Numerical Recipes).
+function _betacf(a,b,x){
+  const MAXIT=200,EPS=3e-12,FPMIN=1e-300;
+  const qab=a+b,qap=a+1,qam=a-1;
+  let c=1,d=1-qab*x/qap; if(Math.abs(d)<FPMIN)d=FPMIN; d=1/d; let h=d;
+  for(let m=1;m<=MAXIT;m++){
+    const m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d; h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d;
+    const de=d*c; h*=de; if(Math.abs(de-1)<EPS)break;
+  }
+  return h;
+}
+function _lgamma(z){ // Lanczos
+  const g=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let x=z,y=z,tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp); let ser=1.000000000190015;
+  for(let j=0;j<6;j++){y++;ser+=g[j]/y;}
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+function _betai(a,b,x){
+  if(x<=0)return 0; if(x>=1)return 1;
+  const bt=Math.exp(_lgamma(a+b)-_lgamma(a)-_lgamma(b)+a*Math.log(x)+b*Math.log(1-x));
+  return x<(a+1)/(a+b+2) ? bt*_betacf(a,b,x)/a : 1-bt*_betacf(b,a,1-x)/b;
+}
+const tTwoSidedP=(t,df)=>df<=0?NaN:_betai(df/2,0.5,df/(df+t*t));
+
+// Paired t-test sobre filas ya filtradas a la ventana: parea por timestamp, d=filtro−referencia.
+function pairedStats(rows){
+  const byT={};
+  rows.forEach(r=>{(byT[r.t]||(byT[r.t]={}))[r.sid]=r.pm25;});
+  const d=[];
+  for(const k in byT){const o=byT[k];if(o[AIRE_FILTER]!==undefined&&o[AIRE_REF]!==undefined)d.push(o[AIRE_FILTER]-o[AIRE_REF]);}
+  const n=d.length;
+  if(n<2)return{n,ok:false};
+  const mean=d.reduce((a,b)=>a+b,0)/n;
+  const sd=Math.sqrt(d.reduce((a,b)=>a+(b-mean)*(b-mean),0)/(n-1));
+  if(sd===0)return{n,ok:false};
+  const df=n-1, t=mean/(sd/Math.sqrt(n));
+  return {n,ok:true,t,p:tTwoSidedP(t,df),cohensd:mean/sd,mean,df};
+}
+const ppval=p=>p==null?"—":(p<0.0001?"&lt;0.0001":p.toFixed(4));
+const effLabel=d=>{const a=Math.abs(d);return T().eff[a<0.2?0:a<0.5?1:a<0.8?2:3];};
+const sigBadge=p=>p<0.05?`<span style="color:var(--green-mid);font-weight:600;">${T().significant}</span>`:`<span style="color:var(--muted);">${T().notSignificant}</span>`;
+
+// ---- tabla canónica desde purpleair_stats.json ----
+function renderCanon(){
+  const L=T(), el=document.getElementById("aireCanon");
+  document.getElementById("secCanon").textContent=L.canonTitle;
+  document.getElementById("aireMethod").textContent=L.methodNote;
+  if(!_stats){el.innerHTML=`<tbody><tr><td style="color:var(--hint)">${L.statsErr}</td></tr></tbody>`;return;}
+  const order=[["school_hours",L.win_school],["extended_hours",L.win_extended],["all_hours",L.win_all],["outside_hours",L.win_outside]];
+  const body=order.map(([k,lab])=>{
+    const e=_stats[k];
+    if(!e||e.t_stat==null)return `<tr><td>${lab}</td><td class="num" colspan="5" style="color:var(--hint)">${L.noDiff}</td></tr>`;
+    return `<tr><td>${lab}</td><td class="num">${e.t_stat.toFixed(2)}</td><td class="num">${ppval(e.p_value)}</td><td class="num">${e.cohens_d.toFixed(2)}</td><td class="num">${e.n}</td>`+
+      `<td>${e.significant?`<span style="color:var(--green-mid);font-weight:600;">${L.sigShort}</span>`:`<span style="color:var(--muted)">${L.nsShort}</span>`}</td></tr>`;
+  }).join("");
+  el.innerHTML=`<thead><tr><th>${L.th_window}</th><th class="num">t</th><th class="num">p</th><th class="num">Cohen's d</th><th class="num">${L.th_npairs}</th><th>${L.th_sig}</th></tr></thead><tbody>${body}</tbody>`;
+}
+
 // ---- textos estáticos según idioma ----
 function applyStaticI18n(){
   const L=T();
@@ -262,7 +347,7 @@ function setLang(l){
 function onSlide(){ renderAire(); }
 
 // ---- datos en memoria + render ----
-let _rows=[], _dates=[];
+let _rows=[], _dates=[], _stats=null;
 
 async function loadAire(){
   const fromEl=document.getElementById("aireFrom"),toEl=document.getElementById("aireTo");
@@ -289,9 +374,11 @@ function renderAire(){
   document.getElementById("aireStatus").textContent=T().status(_rows.length,_dates.length);
 
   const errEl=document.getElementById("aireErr");errEl.innerHTML="";
+  renderCanon();   // tabla canónica desde el JSON (independiente de los sliders)
   if(!_rows.length){
     errEl.innerHTML=T().errHtml;
     document.getElementById("aireStats").innerHTML="";document.getElementById("aireLeg").innerHTML="";
+    document.getElementById("aireSig").innerHTML="";
     aireChart([],winFrom,winTo);return;
   }
 
@@ -304,9 +391,28 @@ function renderAire(){
   // Stats sólo de la ventana seleccionada.
   const winRows=_rows.filter(r=>inWindow(r.tp.minutes,winFrom,winTo));
   document.getElementById("aireStats").innerHTML=aireStatsTable(winRows);
+
+  // Significancia (paired t-test en vivo) de la ventana seleccionada.
+  const st=pairedStats(winRows);
+  const sigEl=document.getElementById("aireSig");
+  if(!st.ok){
+    sigEl.innerHTML=`<span class="section-title">${T().sigTitle}</span><div style="color:var(--hint)">${T().noDiff}</div>`;
+  }else{
+    sigEl.innerHTML=`<span class="section-title">${T().sigTitle}</span>`+
+      `<div>t = <b>${st.t.toFixed(2)}</b> · p = <b>${ppval(st.p)}</b> · Cohen's d = <b>${st.cohensd.toFixed(2)}</b> (${effLabel(st.cohensd)}) · n = ${st.n} ${T().pairs} → ${sigBadge(st.p)}</div>`;
+  }
+}
+
+// Carga purpleair_stats.json (ventanas canónicas precalculadas) desde GitHub.
+function loadStatsJson(){
+  fetch(`${REPO}/energy_logs/purpleair_stats.json?t=`+Date.now())
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{_stats=j;renderCanon();})
+    .catch(()=>renderCanon());
 }
 
 applyStaticI18n();
+loadStatsJson();
 loadAire();
 setInterval(loadAire,60000);   // refresca cada minuto
 </script>

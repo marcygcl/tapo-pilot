@@ -1,0 +1,49 @@
+{
+  "school_hours": {
+    "n": 130,
+    "t_stat": -25.9603,
+    "p_value": 0.0,
+    "mean_diff": -2.7846,
+    "cohens_d": -2.2769,
+    "df": 129,
+    "sd": 1.223,
+    "significant": true
+  },
+  "extended_hours": {
+    "n": 156,
+    "t_stat": -18.216,
+    "p_value": 0.0,
+    "mean_diff": -2.2994,
+    "cohens_d": -1.4584,
+    "df": 155,
+    "sd": 1.5766,
+    "significant": true
+  },
+  "all_hours": {
+    "n": 604,
+    "t_stat": -7.5322,
+    "p_value": 0.0,
+    "mean_diff": -0.4399,
+    "cohens_d": -0.3065,
+    "df": 603,
+    "sd": 1.4353,
+    "significant": true
+  },
+  "outside_hours": {
+    "n": 324,
+    "t_stat": 5.4543,
+    "p_value": 0.0,
+    "mean_diff": 0.1691,
+    "cohens_d": 0.303,
+    "df": 323,
+    "sd": 0.5582,
+    "significant": true
+  },
+  "_meta": {
+    "method": "paired t-test, d = pm25(filter) - pm25(reference), matched by timestamp; pairing controls for day-of-week and hour-of-day. Two-sided p-value.",
+    "sensor_filter": "308614",
+    "sensor_reference": "308572",
+    "generated_utc": "2026-06-24T19:41:30+00:00",
+    "caveat": "Observational: two different rooms; room differences beyond the filter are confounded."
+  }
+}
