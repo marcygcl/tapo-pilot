@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Air Quality (PM2.5) — PurpleAir</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     :root{--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);--text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;--green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;--amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;--orange:#9a4a06;--orange-bg:#fbe6d4;--orange-mid:#e8830c;--red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;--blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;--r:10px;}
@@ -37,6 +39,53 @@
     .aire-line svg{width:100%;height:360px;display:block;}
     .err{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-mid);border-radius:var(--r);padding:11px 14px;font-size:12.5px;}
     .err code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
+
+    /* ---- tabs / panels (Experimento · Red del Estudio · Mapa) ---- */
+    .tabs{display:flex;border-bottom:.5px solid var(--border);background:var(--surface);}
+    .tab{padding:10px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;}
+    .tab:hover{color:var(--text);}.tab.active{color:var(--text);border-bottom-color:var(--text);}
+    .panel{display:none;}.panel.active{display:block;}
+
+    /* ---- Red del Estudio (rosario*) ---- */
+    .ros-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+    .ros-kpi{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:13px 15px;}
+    .ros-kpi .k-lab{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;}
+    .ros-kpi .k-val{font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px;}
+    .ros-kpi .k-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+    .ros-controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);}
+    .ros-controls label{display:flex;align-items:center;gap:6px;}
+    .ros-controls input,.ros-controls select{font-size:12px;border:.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);padding:6px 8px;font-family:inherit;}
+    .ros-controls input[type=search]{min-width:190px;}
+    .seg{display:inline-flex;border:.5px solid var(--border);border-radius:8px;overflow:hidden;}
+    .seg button{background:var(--bg);border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:500;padding:6px 11px;font-family:inherit;border-left:.5px solid var(--border);}
+    .seg button:first-child{border-left:none;}
+    .seg button.active{background:var(--blue-bg);color:var(--blue);}
+    .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap;}
+    .badge.arm-both{background:var(--green-bg);color:var(--green);}
+    .badge.arm-mon{background:var(--blue-bg);color:var(--blue);}
+    .ros-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;}
+    .ros-table th{text-align:left;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:.5px solid var(--border);background:var(--bg);cursor:pointer;white-space:nowrap;}
+    .ros-table th.num{text-align:right;}
+    .ros-table td{padding:9px 12px;border-bottom:.5px solid var(--border);}
+    .ros-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+    .ros-table tr.school-row{cursor:pointer;}
+    .ros-table tr.school-row:hover{background:var(--blue-bg);}
+    .ros-table tr.offline td{color:var(--hint);}
+    .ros-table tr.sensor-row td{background:var(--bg);font-size:12px;color:var(--muted);}
+    .ros-table tr.sensor-row td.first{padding-left:28px;}
+    .ros-caret{display:inline-block;width:10px;color:var(--hint);transition:transform .12s;}
+    .ros-caret.open{transform:rotate(90deg);}
+    .ros-shared{font-size:9px;font-weight:600;color:var(--amber);border:.5px solid var(--amber-mid);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:middle;}
+
+    /* ---- Mapa (mapa*) ---- */
+    #rosariomap{width:100%;height:calc(100vh - 165px);min-height:420px;background:var(--bg);}
+    .mapa-legend{position:absolute;right:14px;bottom:22px;z-index:600;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--text);box-shadow:0 2px 10px rgba(0,0,0,.12);}
+    .mapa-legend .row{display:flex;align-items:center;gap:6px;margin-top:4px;}
+    .mapa-legend .sw{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.25);}
+    .mapa-legend .hd{font-size:9px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 2px;}
+    .leaflet-popup-content{font-size:12px;}
+    .leaflet-popup-content .p-name{font-weight:600;font-size:12.5px;}
+    .leaflet-popup-content .p-meta{font-size:10.5px;color:#888;margin:2px 0 5px;}
   </style>
 </head>
 <body>
@@ -53,6 +102,14 @@
   </div>
 </div>
 
+<div class="tabs">
+  <div class="tab active" id="tabExperimento" onclick="switchTab('experimento',this)"></div>
+  <div class="tab" id="tabRosario" onclick="switchTab('rosario',this)"></div>
+  <div class="tab" id="tabMapa" onclick="switchTab('mapa',this)"></div>
+</div>
+
+<!-- ============ TAB 1: Experimento (PurpleAir A/B) — intacto ============ -->
+<div class="panel active" id="panel-experimento">
 <div class="wrap">
   <div style="font-size:12px;color:var(--muted);"><span id="introText"></span> <span id="aireStatus" style="color:var(--hint)"></span></div>
 
@@ -80,6 +137,49 @@
     <div id="aireMethod" style="font-size:10.5px;color:var(--hint);margin-top:8px;"></div>
   </div>
 </div>
+</div><!-- /panel-experimento -->
+
+<!-- ============ TAB 2: Red del Estudio ============ -->
+<div class="panel" id="panel-rosario">
+<div class="wrap">
+  <div style="font-size:12px;color:var(--muted);"><span id="rosIntro"></span> <span id="rosStatus" style="color:var(--hint)"></span></div>
+
+  <div>
+    <div class="section-title" id="rosKpiTitle"></div>
+    <div class="ros-kpis" id="rosKpis"></div>
+  </div>
+
+  <div class="ros-controls">
+    <label><span id="rosLblSource"></span>
+      <span class="seg" id="rosSourceSeg">
+        <button data-src="both" class="active" onclick="rosarioSetSource('both',this)"></button>
+        <button data-src="rosario" onclick="rosarioSetSource('rosario',this)"></button>
+        <button data-src="purpleair" onclick="rosarioSetSource('purpleair',this)"></button>
+      </span>
+    </label>
+    <label><span id="rosLblSort"></span>
+      <select id="rosSort" onchange="rosarioRender()">
+        <option value="pm_int">pm_int</option>
+        <option value="diff">diff</option>
+        <option value="arm">arm</option>
+        <option value="name">name</option>
+      </select>
+    </label>
+    <label><input type="search" id="rosSearch" oninput="rosarioRender()" placeholder=""></label>
+  </div>
+
+  <div id="rosErr"></div>
+  <table class="ros-table" id="rosTable"></table>
+</div>
+</div><!-- /panel-rosario -->
+
+<!-- ============ TAB 3: Mapa ============ -->
+<div class="panel" id="panel-mapa">
+  <div style="position:relative;">
+    <div id="rosariomap"></div>
+    <div class="mapa-legend" id="mapaLegend"></div>
+  </div>
+</div><!-- /panel-mapa -->
 
 <script>
 // ===================== AIRE (PurpleAir PM2.5) — explorador de ventana horaria =====================
@@ -121,6 +221,28 @@ const I18N={
     errHtml:`<div class="err">No PurpleAir readings in the selected range.
       Run the collector: <code>uv run python collectors/purpleair.py</code> (needs <code>PURPLEAIR_API_KEY</code> in <code>.env</code>),
       or widen the date range.</div>`,
+    // ---- tabs ----
+    tab_experiment:"Experiment", tab_network:"Study network", tab_map:"Map",
+    // ---- Tab 2: Red del Estudio ----
+    rosIntro:`Study network: <b>108 schools</b> across Bogotá — Rosario low-cost sensors (indoor/outdoor) plus the shared PurpleAir school. Grouped by school with its RCT treatment arm.`,
+    rosStatus:(sch,on)=>`${sch} schools · ${on} with live readings`,
+    ros_kpiTitle:"Network RCT — mean indoor PM2.5 by arm (Rosario schools)",
+    kpi_filters:"Filters & monitors", kpi_monitors:"Only monitors", kpi_gap:"Difference (monitors − filters)",
+    kpi_schoolsN:n=>`${n} schools w/ data`,
+    ros_source:"Source", src_both:"Both", src_rosario:"Rosario", src_purpleair:"PurpleAir",
+    ros_sort:"Sort by", sort_pm:"Indoor PM2.5", sort_diff:"Diff ext−int", sort_arm:"Arm", sort_name:"Name",
+    ros_search:"Search school…",
+    arm_both:"Filters & monitors", arm_mon:"Only monitors",
+    th_school:"School", th_localidad:"Locality", th_arm:"Arm",
+    th_nint:"Indoor", th_next:"Outdoor", th_pmint:"PM2.5 in", th_pmext:"PM2.5 out", th_diff:"Ext−Int",
+    interior:"indoor", exterior:"outdoor", offline_lbl:"offline", shared:"shared",
+    lastReading:"last reading", noReadings:"no live readings",
+    rosErr:`<div class="err">Could not load <code>data/sensor_crosswalk.json</code>. Make sure it exists and the page is served from the repo.</div>`,
+    // ---- Tab 3: Map ----
+    map_bands:"Indoor PM2.5", map_arms:"Treatment arm",
+    band_good:"Good ≤12", band_mod:"Moderate ≤35", band_usg:"Unhealthy (sens.) ≤55", band_bad:"Unhealthy >55", band_off:"Offline",
+    map_pa:"PurpleAir school (Francisco Primero)",
+    pop_arm:"Arm", pop_sensors:"Sensors", pop_pm:"PM2.5 in/out", pop_last:"Last reading",
   },
   es:{
     locale:"es",
@@ -152,6 +274,28 @@ const I18N={
     errHtml:`<div class="err">Sin lecturas de PurpleAir en el rango seleccionado.
       Corre el collector: <code>uv run python collectors/purpleair.py</code> (necesita <code>PURPLEAIR_API_KEY</code> en el <code>.env</code>),
       o amplía el rango de fechas.</div>`,
+    // ---- tabs ----
+    tab_experiment:"Experimento", tab_network:"Red del Estudio", tab_map:"Mapa",
+    // ---- Tab 2: Red del Estudio ----
+    rosIntro:`Red del estudio: <b>108 escuelas</b> en Bogotá — sensores de bajo costo Rosario (interior/exterior) más la escuela PurpleAir compartida. Agrupadas por escuela con su brazo de tratamiento (RCT).`,
+    rosStatus:(sch,on)=>`${sch} escuelas · ${on} con lecturas en vivo`,
+    ros_kpiTitle:"RCT de red — PM2.5 interior promedio por brazo (escuelas Rosario)",
+    kpi_filters:"Filtros y monitores", kpi_monitors:"Solo monitores", kpi_gap:"Diferencia (monitores − filtros)",
+    kpi_schoolsN:n=>`${n} escuelas con datos`,
+    ros_source:"Fuente", src_both:"Ambas", src_rosario:"Rosario", src_purpleair:"PurpleAir",
+    ros_sort:"Ordenar por", sort_pm:"PM2.5 interior", sort_diff:"Dif ext−int", sort_arm:"Brazo", sort_name:"Nombre",
+    ros_search:"Buscar escuela…",
+    arm_both:"Filtros y monitores", arm_mon:"Solo monitores",
+    th_school:"Escuela", th_localidad:"Localidad", th_arm:"Brazo",
+    th_nint:"Interior", th_next:"Exterior", th_pmint:"PM2.5 int", th_pmext:"PM2.5 ext", th_diff:"Ext−Int",
+    interior:"interior", exterior:"exterior", offline_lbl:"offline", shared:"compartida",
+    lastReading:"última lectura", noReadings:"sin lecturas en vivo",
+    rosErr:`<div class="err">No se pudo cargar <code>data/sensor_crosswalk.json</code>. Verificá que exista y que la página se sirva desde el repo.</div>`,
+    // ---- Tab 3: Mapa ----
+    map_bands:"PM2.5 interior", map_arms:"Brazo de tratamiento",
+    band_good:"Bueno ≤12", band_mod:"Moderado ≤35", band_usg:"Dañino (sens.) ≤55", band_bad:"Dañino >55", band_off:"Offline",
+    map_pa:"Escuela PurpleAir (Francisco Primero)",
+    pop_arm:"Brazo", pop_sensors:"Sensores", pop_pm:"PM2.5 int/ext", pop_last:"Última lectura",
   },
 };
 let LANG = (localStorage.getItem("purpleair_lang")==="es") ? "es" : "en";   // default: English
@@ -334,6 +478,19 @@ function applyStaticI18n(){
   document.getElementById("lblTimeTo").textContent=L.timeTo;
   document.getElementById("langEn").classList.toggle("active",LANG==="en");
   document.getElementById("langEs").classList.toggle("active",LANG==="es");
+  // ---- tabs + Red del Estudio (estáticos) ----
+  document.getElementById("tabExperimento").textContent=L.tab_experiment;
+  document.getElementById("tabRosario").textContent=L.tab_network;
+  document.getElementById("tabMapa").textContent=L.tab_map;
+  document.getElementById("rosIntro").innerHTML=L.rosIntro;
+  document.getElementById("rosKpiTitle").textContent=L.ros_kpiTitle;
+  document.getElementById("rosLblSource").textContent=L.ros_source;
+  document.getElementById("rosLblSort").textContent=L.ros_sort;
+  document.getElementById("rosSearch").placeholder=L.ros_search;
+  const seg=document.getElementById("rosSourceSeg").children;
+  seg[0].textContent=L.src_both; seg[1].textContent=L.src_rosario; seg[2].textContent=L.src_purpleair;
+  const so=document.getElementById("rosSort").options;
+  so[0].textContent=L.sort_pm; so[1].textContent=L.sort_diff; so[2].textContent=L.sort_arm; so[3].textContent=L.sort_name;
 }
 
 function setLang(l){
@@ -341,6 +498,18 @@ function setLang(l){
   localStorage.setItem("purpleair_lang",LANG);
   applyStaticI18n();
   renderAire();   // re-renderiza sin volver a descargar
+  if(_rosLoaded)rosarioRender();
+  if(_mapaInit)mapaRender();
+}
+
+// ===================== TABS (lazy-load por pestaña) =====================
+function switchTab(id,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("panel-"+id).classList.add("active");
+  if(id==="rosario")rosarioLoad();
+  if(id==="mapa")mapaLoad();
 }
 
 // onInput de los sliders: sólo re-renderiza (no descarga).
@@ -409,6 +578,231 @@ function loadStatsJson(){
     .then(r=>r.ok?r.json():null)
     .then(j=>{_stats=j;renderCanon();})
     .catch(()=>renderCanon());
+}
+
+// ===================== TAB 2: RED DEL ESTUDIO (rosario*) =====================
+// Lee data/sensor_crosswalk.json (336 sensores, 108 escuelas, brazo RCT, GPS,
+// interior/exterior) + las lecturas más recientes de energy_logs/aire_ciudadano/
+// (Rosario) y energy_logs/purpleair/ (PurpleAir). Agrupa por escuela.
+let _rosLoaded=false, _rosXW=null, _rosReadings={}, _rosDisplay=[], _rosSource="both";
+
+const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+// pmColor devuelve var(--…) (sirve en el DOM); para Leaflet necesitamos un hex concreto.
+function pmHex(v){
+  if(v==null)return cssVar("--muted");
+  if(v<=12)return cssVar("--green-mid");
+  if(v<=35)return cssVar("--amber-mid");
+  if(v<=55)return cssVar("--orange-mid");
+  return cssVar("--red-mid");
+}
+const rosArmKey=t=>t==="Filters & monitors"?"both":"mon";
+const rosMean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+// clave de join lectura↔crosswalk: PurpleAir por id numérico, Rosario por nombre.
+const rosKey=s=>s.source==="purpleair"?("pa:"+s.purpleair_id):("ro:"+s.sensor_name);
+
+function rosDates(n){
+  const out=[],d=new Date();
+  for(let i=0;i<n;i++){out.push(`${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`);d.setDate(d.getDate()-1);}
+  return out;
+}
+const rosFetchCsv=(dir,date)=>new Promise(res=>{
+  Papa.parse(`${REPO}/energy_logs/${dir}/${date}.csv`,{download:true,header:true,
+    complete:r=>res((r.data||[]).filter(x=>x&&x.timestamp&&typeof x.timestamp==="string")),
+    error:()=>res([])});
+});
+
+async function rosarioFetchReadings(){
+  const dates=rosDates(4);   // últimos 4 días: cubre huecos y toma la lectura más reciente
+  const [ros,pa]=await Promise.all([
+    Promise.all(dates.map(d=>rosFetchCsv("aire_ciudadano",d))),
+    Promise.all(dates.map(d=>rosFetchCsv("purpleair",d))),
+  ]);
+  const latest={};
+  // Guarda el estado más reciente (pm25 puede ser null=offline) y, aparte, la
+  // última lectura VÁLIDA (para "última lectura" del popup).
+  const put=(key,ts,pm25)=>{
+    if(!key||!ts)return;
+    const cur=latest[key]||(latest[key]={ts:"",pm25:null,validTs:null});
+    if(ts>cur.ts){cur.ts=ts;cur.pm25=pm25;}
+    if(pm25!=null&&(!cur.validTs||ts>cur.validTs))cur.validTs=ts;
+  };
+  ros.flat().forEach(r=>{const v=parseFloat(r.pm25);put("ro:"+r.station_id,r.timestamp,isNaN(v)?null:v);});
+  pa.flat().forEach(r=>{const v=parseFloat(r.pm25);put("pa:"+parseInt(r.sensor_id),r.timestamp,isNaN(v)?null:v);});
+  _rosReadings=latest;
+}
+
+async function rosarioLoad(){
+  if(_rosLoaded)return;
+  try{
+    const xw=await fetch(`${REPO}/data/sensor_crosswalk.json?t=`+Date.now()).then(r=>r.ok?r.json():Promise.reject());
+    _rosXW=xw.sensors;
+  }catch(e){
+    document.getElementById("rosErr").innerHTML=T().rosErr;
+    return;   // permite reintento en el próximo click
+  }
+  _rosLoaded=true;
+  await rosarioFetchReadings();
+  rosarioRender();
+}
+
+// Agrega sensores por escuela. `src` = 'both' | 'rosario' | 'purpleair'.
+function rosAggBySchool(src){
+  const by={};
+  _rosXW.forEach(s=>{
+    if(src!=="both"&&s.source!==src)return;
+    const g=by[s.school_uid]||(by[s.school_uid]={uid:s.school_uid,name:s.school_name,localidad:s.localidad,
+      arm:s.treatment,armKey:rosArmKey(s.treatment),lat:[],lon:[],sensors:[],sources:new Set()});
+    const rd=_rosReadings[rosKey(s)]||null;
+    const pm=rd&&rd.pm25!=null?rd.pm25:null;
+    g.sensors.push({name:s.sensor_name,source:s.source,classroom:s.classroom_name||s.classroom_token||"—",
+      exterior:!!s.exterior,label:s.label||null,pm,online:pm!=null,lastTs:rd?(rd.validTs||rd.ts):null});
+    g.sources.add(s.source);
+    if(s.lat){g.lat.push(s.lat);g.lon.push(s.lon);}
+  });
+  return Object.values(by).map(g=>{
+    const inS=g.sensors.filter(x=>!x.exterior),exS=g.sensors.filter(x=>x.exterior);
+    const inPm=inS.filter(x=>x.online).map(x=>x.pm),exPm=exS.filter(x=>x.online).map(x=>x.pm);
+    const mi=rosMean(inPm),me=rosMean(exPm);
+    return {uid:g.uid,name:g.name,localidad:g.localidad,arm:g.arm,armKey:g.armKey,sensors:g.sensors,
+      nInt:inS.length,nExt:exS.length,nIntOn:inPm.length,nExtOn:exPm.length,
+      pmInt:mi,pmExt:me,diff:(mi!=null&&me!=null)?me-mi:null,
+      lat:g.lat.length?rosMean(g.lat):null,lon:g.lon.length?rosMean(g.lon):null,
+      online:g.sensors.some(x=>x.online),shared:g.sources.size>1,hasPA:g.sources.has("purpleair")};
+  });
+}
+
+// KPIs de red (SIEMPRE solo Rosario): media de las medias interiores por escuela, por brazo.
+function rosarioKPIs(){
+  const by={};
+  _rosXW.filter(s=>s.source==="rosario"&&!s.exterior).forEach(s=>{
+    const rd=_rosReadings["ro:"+s.sensor_name];
+    (by[s.school_uid]||(by[s.school_uid]={arm:rosArmKey(s.treatment),pm:[]})).pm.push(rd&&rd.pm25!=null?rd.pm25:null);
+  });
+  const arms={both:[],mon:[]};
+  Object.values(by).forEach(g=>{const on=g.pm.filter(x=>x!=null);if(on.length)arms[g.armKey||g.arm].push(rosMean(on));});
+  return {both:rosMean(arms.both),bothN:arms.both.length,mon:rosMean(arms.mon),monN:arms.mon.length};
+}
+
+function rosarioSetSource(src,el){
+  _rosSource=src;
+  [...document.getElementById("rosSourceSeg").children].forEach(b=>b.classList.toggle("active",b===el));
+  rosarioRender();
+}
+
+const rosFmtTs=s=>{if(!s)return"—";const d=new Date(s);return isNaN(d)?"—":d.toLocaleString(T().locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});};
+const rosKpiCard=(lab,val,sub,color)=>`<div class="ros-kpi"><div class="k-lab">${lab}</div><div class="k-val" style="color:${color}">${val}</div><div class="k-sub">${sub}</div></div>`;
+
+function rosarioRender(){
+  if(!_rosLoaded||!_rosXW)return;
+  const L=T();
+  // KPIs (siempre Rosario)
+  const k=rosarioKPIs(),gap=(k.both!=null&&k.mon!=null)?(k.mon-k.both):null;
+  const kv=v=>v==null?"—":v.toFixed(1);
+  document.getElementById("rosKpis").innerHTML=
+    rosKpiCard(L.kpi_filters,kv(k.both),L.kpi_schoolsN(k.bothN),pmColor(k.both))+
+    rosKpiCard(L.kpi_monitors,kv(k.mon),L.kpi_schoolsN(k.monN),pmColor(k.mon))+
+    rosKpiCard(L.kpi_gap,gap==null?"—":((gap>0?"+":"")+gap.toFixed(1)+" µg/m³"),"",
+      gap==null?"var(--muted)":(gap>0?"var(--red-mid)":"var(--green-mid)"));
+
+  // lista filtrada por fuente + búsqueda + orden
+  const q=document.getElementById("rosSearch").value.trim().toLowerCase();
+  const sort=document.getElementById("rosSort").value;
+  let list=rosAggBySchool(_rosSource).filter(s=>!q||s.name.toLowerCase().includes(q)||(s.localidad||"").toLowerCase().includes(q));
+  const lo=v=>v==null?-Infinity:v;   // nulls al fondo en orden descendente
+  list.sort((a,b)=>{
+    if(sort==="name")return a.name.localeCompare(b.name);
+    if(sort==="arm")return a.armKey.localeCompare(b.armKey)||a.name.localeCompare(b.name);
+    if(sort==="diff")return lo(b.diff)-lo(a.diff);
+    return lo(b.pmInt)-lo(a.pmInt);   // pm_int por defecto
+  });
+  _rosDisplay=list;
+  document.getElementById("rosStatus").textContent=L.rosStatus(list.length,list.filter(s=>s.online).length);
+
+  const armBadge=s=>`<span class="badge ${s.armKey==='both'?'arm-both':'arm-mon'}">${s.armKey==='both'?L.arm_both:L.arm_mon}</span>`;
+  const pmC=v=>v==null?'<span style="color:var(--hint)">—</span>':`<span style="color:${pmColor(v)};font-weight:500">${v.toFixed(1)}</span>`;
+  const diffC=s=>s.diff==null?'<span style="color:var(--hint)">—</span>':`<b style="color:${s.diff>0?'var(--red-mid)':'var(--green-mid)'}">${(s.diff>0?'+':'')+s.diff.toFixed(1)}</b>`;
+
+  let html=`<thead><tr><th>${L.th_school}</th><th>${L.th_localidad}</th><th>${L.th_arm}</th>`+
+    `<th class="num">${L.th_nint}</th><th class="num">${L.th_next}</th>`+
+    `<th class="num">${L.th_pmint}</th><th class="num">${L.th_pmext}</th><th class="num">${L.th_diff}</th></tr></thead><tbody>`;
+  list.forEach((s,i)=>{
+    html+=`<tr class="school-row ${s.online?'':'offline'}" onclick="rosarioToggle(${i})">`+
+      `<td><span class="ros-caret" id="rosCaret${i}">▶</span> ${s.name}${s.shared?`<span class="ros-shared">${L.shared}</span>`:''}</td>`+
+      `<td>${s.localidad||'—'}</td><td>${armBadge(s)}</td>`+
+      `<td class="num">${s.nIntOn}/${s.nInt}</td><td class="num">${s.nExtOn}/${s.nExt}</td>`+
+      `<td class="num">${pmC(s.pmInt)}</td><td class="num">${pmC(s.pmExt)}</td><td class="num">${diffC(s)}</td></tr>`;
+    s.sensors.slice().sort((a,b)=>(a.exterior-b.exterior)||a.classroom.localeCompare(b.classroom)).forEach(x=>{
+      const loc=x.exterior?L.exterior:L.interior;
+      const tail=x.online?`${x.pm.toFixed(1)} µg/m³ · ${rosFmtTs(x.lastTs)}`:`<span style="color:var(--hint)">${L.offline_lbl}</span>`;
+      html+=`<tr class="sensor-row" data-g="${i}" style="display:none">`+
+        `<td class="first" colspan="5">${x.classroom} · ${loc} · ${x.source}${x.label?` · ${x.label}`:''}</td>`+
+        `<td class="num" colspan="3">${tail}</td></tr>`;
+    });
+  });
+  html+=`</tbody>`;
+  document.getElementById("rosTable").innerHTML=html;
+}
+
+function rosarioToggle(i){
+  const open=document.getElementById("rosCaret"+i).classList.toggle("open");
+  document.querySelectorAll(`.sensor-row[data-g="${i}"]`).forEach(r=>r.style.display=open?"":"none");
+}
+
+// ===================== TAB 3: MAPA (mapa*) =====================
+let _mapaInit=false,_mapaMap=null,_mapaMarkers=[];
+
+async function mapaLoad(){
+  await rosarioLoad();
+  if(!_rosXW)return;
+  if(!_mapaInit){mapaInitBase();_mapaInit=true;}
+  else _mapaMap.invalidateSize();
+  mapaRender();
+}
+function mapaInitBase(){
+  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
+  _mapaMap=L.map("rosariomap",{zoomControl:true}).setView([4.61,-74.09],11);
+  L.tileLayer(dark?"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    {attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(_mapaMap);
+}
+function mapaRender(){
+  if(!_mapaMap)return;
+  const L2=T();
+  _mapaMarkers.forEach(m=>_mapaMap.removeLayer(m));_mapaMarkers=[];
+  // Mapa muestra SIEMPRE toda la red (independiente del filtro de fuente del Tab 2).
+  rosAggBySchool("both").forEach(s=>{
+    if(s.lat==null)return;
+    const fill=pmHex(s.pmInt);
+    // borde = brazo; escuela PurpleAir compartida destacada (más grande, anillo oscuro).
+    const stroke=s.armKey==="both"?cssVar("--green-mid"):cssVar("--blue-mid");
+    const m=L.circleMarker([s.lat,s.lon],{
+      radius:s.hasPA?9:6,fillColor:fill,color:s.hasPA?cssVar("--text"):stroke,
+      weight:s.hasPA?3:2,opacity:1,fillOpacity:0.85});
+    const pmTxt=(v)=>v==null?"—":v.toFixed(1);
+    const lastTs=s.sensors.map(x=>x.lastTs).filter(Boolean).sort().pop();
+    m.bindPopup(`<div style="min-width:190px;">`+
+      `<div class="p-name">${s.name}${s.hasPA?` · ${L2.map_pa.split('(')[0].trim()}`:''}</div>`+
+      `<div class="p-meta">${s.localidad||'—'} · <b>${s.armKey==='both'?L2.arm_both:L2.arm_mon}</b></div>`+
+      `<div>${L2.pop_sensors}: ${s.nIntOn+s.nExtOn}/${s.nInt+s.nExt} (${s.nInt} ${L2.interior} · ${s.nExt} ${L2.exterior})</div>`+
+      `<div>${L2.pop_pm}: <b style="color:${pmColor(s.pmInt)}">${pmTxt(s.pmInt)}</b> / <b style="color:${pmColor(s.pmExt)}">${pmTxt(s.pmExt)}</b> µg/m³</div>`+
+      `<div style="color:#888;font-size:10.5px;margin-top:3px;">${L2.pop_last}: ${rosFmtTs(lastTs)}</div></div>`);
+    m.addTo(_mapaMap);_mapaMarkers.push(m);
+  });
+  mapaLegend();
+}
+function mapaLegend(){
+  const L2=T();
+  const dot=c=>`<span class="sw" style="background:${c}"></span>`;
+  document.getElementById("mapaLegend").innerHTML=
+    `<div class="hd">${L2.map_bands} <span style="text-transform:none;font-weight:400">µg/m³</span></div>`+
+    `<div class="row">${dot(cssVar("--green-mid"))}${L2.band_good}</div>`+
+    `<div class="row">${dot(cssVar("--amber-mid"))}${L2.band_mod}</div>`+
+    `<div class="row">${dot(cssVar("--orange-mid"))}${L2.band_usg}</div>`+
+    `<div class="row">${dot(cssVar("--red-mid"))}${L2.band_bad}</div>`+
+    `<div class="row">${dot(cssVar("--muted"))}${L2.band_off}</div>`+
+    `<div class="hd">${L2.map_arms}</div>`+
+    `<div class="row"><span class="sw" style="background:transparent;border:2px solid ${cssVar("--green-mid")}"></span>${L2.arm_both}</div>`+
+    `<div class="row"><span class="sw" style="background:transparent;border:2px solid ${cssVar("--blue-mid")}"></span>${L2.arm_mon}</div>`+
+    `<div class="row"><span class="sw" style="background:transparent;border:3px solid ${cssVar("--text")}"></span>${L2.map_pa}</div>`;
 }
 
 applyStaticI18n();
