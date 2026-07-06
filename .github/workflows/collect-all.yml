@@ -1,0 +1,111 @@
+name: Collect all data
+
+on:
+  repository_dispatch:
+    types: [tapo-collect-all]
+  workflow_dispatch:
+
+jobs:
+  collect-shelly:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SHELLY_SERVER: ${{ secrets.SHELLY_SERVER }}
+      SHELLY_AUTH_KEY: ${{ secrets.SHELLY_AUTH_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync
+      - run: uv run python collectors/shelly/collect.py --once
+      - name: Commit and push (with retry)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add energy_logs/shelly/
+          git diff --cached --quiet && exit 0
+          git commit -m "data(shelly): $(date -u +%Y-%m-%d\ %H:%M)"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash && git push; then
+              exit 0
+            fi
+            [ $attempt -lt 3 ] && sleep 5
+          done
+          exit 1
+
+  collect-emporia:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      EMPORIA_EMAIL: ${{ secrets.EMPORIA_EMAIL }}
+      EMPORIA_PASSWORD: ${{ secrets.EMPORIA_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync
+      - run: uv run python collectors/emporia/collect.py --once
+      - name: Commit and push (with retry)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add energy_logs/emporia/
+          git diff --cached --quiet && exit 0
+          git commit -m "data(emporia): $(date -u +%Y-%m-%d\ %H:%M)"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash && git push; then
+              exit 0
+            fi
+            [ $attempt -lt 3 ] && sleep 5
+          done
+          exit 1
+
+  collect-purpleair:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      PURPLEAIR_API_KEY: ${{ secrets.PURPLEAIR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync
+      - run: uv run python collectors/purpleair.py --once
+      - name: Commit and push (with retry)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add energy_logs/purpleair/
+          git diff --cached --quiet && exit 0
+          git commit -m "data(purpleair): $(date -u +%Y-%m-%d\ %H:%M)"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash && git push; then
+              exit 0
+            fi
+            [ $attempt -lt 3 ] && sleep 5
+          done
+          exit 1
+
+  collect-aire-ciudadano:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync
+      - run: uv run python collectors/aire_ciudadano.py --once
+      - name: Commit and push (with retry)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add energy_logs/aire_ciudadano/
+          git diff --cached --quiet && exit 0
+          git commit -m "data(aire_ciudadano): $(date -u +%Y-%m-%d\ %H:%M)"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash && git push; then
+              exit 0
+            fi
+            [ $attempt -lt 3 ] && sleep 5
+          done
+          exit 1
