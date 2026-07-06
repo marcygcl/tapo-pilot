@@ -26,8 +26,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # collectors/ -
 from rich.console import Console
 from rich.table import Table
 
+from requests.exceptions import ReadTimeout
+
 from pyemvue import PyEmVue
 from pyemvue.enums import Scale, Unit
+
+OUTLETS_RETRIES = 3       # intentos ante timeout de get_outlets()
+OUTLETS_RETRY_WAIT = 5    # segundos de espera entre intentos
 
 from common import (
     EMPORIA_DEVICES,
@@ -92,7 +97,33 @@ def connect():
         password=EMPORIA_PASSWORD,
         token_storage_file=TOKEN_FILE,
     )
+    # Timeouts más generosos si pyemvue los expone (la API de Emporia a veces cuelga).
+    auth = getattr(vue, "auth", None)
+    if auth is not None:
+        if hasattr(auth, "connect_timeout"):
+            auth.connect_timeout = 20
+        if hasattr(auth, "read_timeout"):
+            auth.read_timeout = 60
     return vue
+
+
+def get_outlets_retry(vue):
+    """vue.get_outlets() con reintentos ante timeouts de lectura.
+
+    Hasta OUTLETS_RETRIES intentos con OUTLETS_RETRY_WAIT s de espera entre cada uno.
+    Si los agota, deja caer el ReadTimeout (visible en GitHub Actions).
+    """
+    for attempt in range(1, OUTLETS_RETRIES + 1):
+        try:
+            return vue.get_outlets()
+        except ReadTimeout:
+            if attempt == OUTLETS_RETRIES:
+                raise
+            console.print(
+                f"  [yellow]Emporia get_outlets timeout, intento {attempt}/{OUTLETS_RETRIES}, "
+                f"esperando {OUTLETS_RETRY_WAIT}s...[/yellow]"
+            )
+            _time.sleep(OUTLETS_RETRY_WAIT)
 
 
 def read_all(vue):
@@ -107,7 +138,7 @@ def read_all(vue):
     day_usage = vue.get_device_list_usage(
         deviceGids=gids, instant=now_utc, scale=Scale.DAY.value, unit=Unit.KWH.value
     )
-    outlet_on = {o.device_gid: o.outlet_on for o in vue.get_outlets()}
+    outlet_on = {o.device_gid: o.outlet_on for o in get_outlets_retry(vue)}
 
     ts = now_bogota().isoformat(timespec="seconds")
     school = int(is_school_hours())

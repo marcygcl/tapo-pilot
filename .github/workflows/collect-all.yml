@@ -23,15 +23,17 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/shelly/
-          git diff --cached --quiet && exit 0
-          git commit -m "data(shelly): $(date -u +%Y-%m-%d\ %H:%M)"
-          for attempt in 1 2 3; do
-            if git pull --rebase --autostash && git push; then
-              exit 0
-            fi
-            [ $attempt -lt 3 ] && sleep 5
-          done
-          exit 1
+          if ! git diff --cached --quiet; then
+            git commit -m "data(shelly): $(date -u +'%Y-%m-%d %H:%M') UTC"
+            for attempt in 1 2 3; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 3 ] && sleep 5
+            done
+            echo "Push failed after 3 retries"
+            exit 1
+          fi
 
   collect-emporia:
     runs-on: ubuntu-latest
@@ -50,15 +52,17 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/emporia/
-          git diff --cached --quiet && exit 0
-          git commit -m "data(emporia): $(date -u +%Y-%m-%d\ %H:%M)"
-          for attempt in 1 2 3; do
-            if git pull --rebase --autostash && git push; then
-              exit 0
-            fi
-            [ $attempt -lt 3 ] && sleep 5
-          done
-          exit 1
+          if ! git diff --cached --quiet; then
+            git commit -m "data(emporia): $(date -u +'%Y-%m-%d %H:%M') UTC"
+            for attempt in 1 2 3; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 3 ] && sleep 5
+            done
+            echo "Push failed after 3 retries"
+            exit 1
+          fi
 
   collect-purpleair:
     runs-on: ubuntu-latest
@@ -76,15 +80,17 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/purpleair/
-          git diff --cached --quiet && exit 0
-          git commit -m "data(purpleair): $(date -u +%Y-%m-%d\ %H:%M)"
-          for attempt in 1 2 3; do
-            if git pull --rebase --autostash && git push; then
-              exit 0
-            fi
-            [ $attempt -lt 3 ] && sleep 5
-          done
-          exit 1
+          if ! git diff --cached --quiet; then
+            git commit -m "data(purpleair): $(date -u +'%Y-%m-%d %H:%M') UTC"
+            for attempt in 1 2 3; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 3 ] && sleep 5
+            done
+            echo "Push failed after 3 retries"
+            exit 1
+          fi
 
   collect-aire-ciudadano:
     runs-on: ubuntu-latest
@@ -100,12 +106,14 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/aire_ciudadano/
-          git diff --cached --quiet && exit 0
-          git commit -m "data(aire_ciudadano): $(date -u +%Y-%m-%d\ %H:%M)"
-          for attempt in 1 2 3; do
-            if git pull --rebase --autostash && git push; then
-              exit 0
-            fi
-            [ $attempt -lt 3 ] && sleep 5
-          done
-          exit 1
+          if ! git diff --cached --quiet; then
+            git commit -m "data(aire_ciudadano): $(date -u +'%Y-%m-%d %H:%M') UTC"
+            for attempt in 1 2 3; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 3 ] && sleep 5
+            done
+            echo "Push failed after 3 retries"
+            exit 1
+          fi
