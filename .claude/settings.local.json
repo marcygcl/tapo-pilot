@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -n '58,59p;33p;93,97p;120p;126,127p' dashboard/index.html)",
+      "Bash(grep -n '\\\\b__TRACKED_VAR__\\\\b' dashboard/index.html)",
+      "Bash(awk -F: '$1<1055 || $1>1191')",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git pull *)",
+      "Bash(git push *)",
+      "Bash(git rev-list *)"
+    ]
+  }
+}

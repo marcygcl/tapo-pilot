@@ -1,0 +1,115 @@
+───────────────────── Benchmark continuo Emporia vs Shelly ─────────────────────
+Lectura cada 30s · CSV por día · Ctrl+C para detener
+
+→ CSV del día: 2026-06-21.csv
+#1 22:33:08 · EMP ok=4 fail=0 1212ms · SHE ok=2 fail=0 881ms
+#20 22:43:18 · EMP ok=80 fail=0 1697ms · SHE ok=40 fail=0 633ms
+#40 22:54:03 · EMP ok=160 fail=0 1545ms · SHE ok=80 fail=0 554ms
+#60 23:04:47 · EMP ok=240 fail=0 1616ms · SHE ok=120 fail=0 717ms
+#80 23:15:46 · EMP ok=316 fail=4 1295ms · SHE ok=160 fail=0 527ms
+#100 23:26:46 · EMP ok=396 fail=4 1458ms · SHE ok=200 fail=0 651ms
+#120 23:37:28 · EMP ok=476 fail=4 1303ms · SHE ok=240 fail=0 492ms
+#140 23:48:11 · EMP ok=556 fail=4 1558ms · SHE ok=280 fail=0 611ms
+#160 23:58:59 · EMP ok=636 fail=4 1821ms · SHE ok=320 fail=0 840ms
+→ CSV del día: 2026-06-22.csv
+#180 00:09:41 · EMP ok=716 fail=4 1999ms · SHE ok=360 fail=0 760ms
+#200 00:20:26 · EMP ok=796 fail=4 2257ms · SHE ok=400 fail=0 692ms
+#220 00:31:12 · EMP ok=876 fail=4 1330ms · SHE ok=440 fail=0 591ms
+#240 00:41:57 · EMP ok=956 fail=4 1776ms · SHE ok=480 fail=0 716ms
+#260 00:52:40 · EMP ok=1036 fail=4 1535ms · SHE ok=520 fail=0 635ms
+#280 01:03:27 · EMP ok=1116 fail=4 1451ms · SHE ok=560 fail=0 880ms
+#300 01:14:14 · EMP ok=1196 fail=4 1616ms · SHE ok=600 fail=0 697ms
+#320 01:24:57 · EMP ok=1276 fail=4 1916ms · SHE ok=640 fail=0 535ms
+#340 01:35:45 · EMP ok=1356 fail=4 1027ms · SHE ok=680 fail=0 779ms
+#360 01:46:33 · EMP ok=1436 fail=4 1642ms · SHE ok=720 fail=0 687ms
+#380 01:57:18 · EMP ok=1516 fail=4 1625ms · SHE ok=760 fail=0 684ms
+#400 02:08:04 · EMP ok=1596 fail=4 2753ms · SHE ok=800 fail=0 712ms
+#420 02:18:52 · EMP ok=1676 fail=4 1794ms · SHE ok=840 fail=0 687ms
+#440 02:29:38 · EMP ok=1756 fail=4 1957ms · SHE ok=880 fail=0 684ms
+#460 02:40:24 · EMP ok=1836 fail=4 1599ms · SHE ok=920 fail=0 757ms
+#480 02:51:10 · EMP ok=1916 fail=4 967ms · SHE ok=960 fail=0 567ms
+#500 03:01:58 · EMP ok=1996 fail=4 2116ms · SHE ok=1000 fail=0 668ms
+#520 03:13:13 · EMP ok=2072 fail=8 925ms · SHE ok=1040 fail=0 521ms
+#540 03:23:54 · EMP ok=2152 fail=8 1626ms · SHE ok=1080 fail=0 712ms
+#560 03:34:39 · EMP ok=2232 fail=8 1091ms · SHE ok=1120 fail=0 520ms
+#580 03:45:24 · EMP ok=2312 fail=8 1668ms · SHE ok=1160 fail=0 703ms
+#600 03:56:09 · EMP ok=2392 fail=8 1993ms · SHE ok=1200 fail=0 864ms
+#620 04:06:54 · EMP ok=2472 fail=8 3542ms · SHE ok=1240 fail=0 550ms
+#640 04:17:40 · EMP ok=2552 fail=8 2311ms · SHE ok=1280 fail=0 716ms
+#660 04:28:24 · EMP ok=2632 fail=8 1157ms · SHE ok=1320 fail=0 561ms
+#680 04:39:07 · EMP ok=2712 fail=8 1215ms · SHE ok=1360 fail=0 592ms
+#700 04:49:49 · EMP ok=2792 fail=8 1147ms · SHE ok=1400 fail=0 516ms
+#720 05:00:36 · EMP ok=2872 fail=8 1966ms · SHE ok=1440 fail=0 683ms
+#740 05:11:24 · EMP ok=2952 fail=8 2334ms · SHE ok=1480 fail=0 689ms
+#760 05:22:08 · EMP ok=3032 fail=8 1935ms · SHE ok=1520 fail=0 714ms
+#780 05:32:55 · EMP ok=3112 fail=8 1497ms · SHE ok=1560 fail=0 684ms
+#800 05:43:38 · EMP ok=3192 fail=8 1516ms · SHE ok=1600 fail=0 781ms
+#820 05:54:23 · EMP ok=3272 fail=8 886ms · SHE ok=1640 fail=0 923ms
+#840 06:05:07 · EMP ok=3352 fail=8 1960ms · SHE ok=1680 fail=0 684ms
+#860 06:15:54 · EMP ok=3432 fail=8 1619ms · SHE ok=1720 fail=0 581ms
+#880 06:26:42 · EMP ok=3512 fail=8 1818ms · SHE ok=1760 fail=0 685ms
+#900 06:37:21 · EMP ok=3592 fail=8 1749ms · SHE ok=1800 fail=0 688ms
+#920 06:47:59 · EMP ok=3672 fail=8 1601ms · SHE ok=1840 fail=0 688ms
+#940 06:58:39 · EMP ok=3752 fail=8 1621ms · SHE ok=1880 fail=0 684ms
+#960 07:10:16 · EMP ok=3828 fail=12 1438ms · SHE ok=1920 fail=0 808ms
+#980 07:21:53 · EMP ok=3900 fail=20 1015ms · SHE ok=1960 fail=0 553ms
+#1000 07:32:42 · EMP ok=3980 fail=20 925ms · SHE ok=2000 fail=0 522ms
+#1020 07:44:04 · EMP ok=4056 fail=24 1599ms · SHE ok=2040 fail=0 695ms
+#1040 07:54:46 · EMP ok=4136 fail=24 1019ms · SHE ok=2080 fail=0 550ms
+#1060 08:05:30 · EMP ok=4216 fail=24 1464ms · SHE ok=2120 fail=0 482ms
+#1080 08:16:10 · EMP ok=4296 fail=24 856ms · SHE ok=2160 fail=0 536ms
+#1100 08:26:49 · EMP ok=4376 fail=24 1850ms · SHE ok=2200 fail=0 685ms
+#1120 08:37:31 · EMP ok=4456 fail=24 807ms · SHE ok=2240 fail=0 555ms
+#1140 08:48:09 · EMP ok=4536 fail=24 2265ms · SHE ok=2280 fail=0 479ms
+#1160 08:58:52 · EMP ok=4616 fail=24 1340ms · SHE ok=2320 fail=0 469ms
+#1180 09:10:08 · EMP ok=4688 fail=32 1215ms · SHE ok=2360 fail=0 590ms
+#1200 09:20:47 · EMP ok=4768 fail=32 1899ms · SHE ok=2400 fail=0 768ms
+#1220 09:31:27 · EMP ok=4848 fail=32 889ms · SHE ok=2440 fail=0 472ms
+#1240 09:42:06 · EMP ok=4928 fail=32 1503ms · SHE ok=2480 fail=0 474ms
+#1260 09:52:40 · EMP ok=5008 fail=32 1630ms · SHE ok=2520 fail=0 738ms
+#1280 10:03:18 · EMP ok=5088 fail=32 755ms · SHE ok=2560 fail=0 537ms
+#1300 10:13:57 · EMP ok=5168 fail=32 1584ms · SHE ok=2600 fail=0 685ms
+#1320 10:24:33 · EMP ok=5248 fail=32 1701ms · SHE ok=2640 fail=0 694ms
+#1340 10:35:12 · EMP ok=5328 fail=32 965ms · SHE ok=2680 fail=0 527ms
+#1360 10:45:48 · EMP ok=5408 fail=32 1496ms · SHE ok=2720 fail=0 760ms
+#1380 10:56:27 · EMP ok=5488 fail=32 855ms · SHE ok=2760 fail=0 550ms
+#1400 11:07:06 · EMP ok=5568 fail=32 1236ms · SHE ok=2800 fail=0 456ms
+#1420 11:17:45 · EMP ok=5648 fail=32 2010ms · SHE ok=2840 fail=0 774ms
+#1440 11:35:23 · EMP ok=5700 fail=60 10ms · SHE ok=2866 fail=14 1ms
+#1460 11:53:18 · EMP ok=5760 fail=80 642ms · SHE ok=2900 fail=20 519ms
+#1480 12:03:53 · EMP ok=5840 fail=80 929ms · SHE ok=2940 fail=20 522ms
+#1500 12:14:30 · EMP ok=5920 fail=80 751ms · SHE ok=2980 fail=20 864ms
+#1520 12:25:14 · EMP ok=6000 fail=80 1359ms · SHE ok=3020 fail=20 642ms
+#1540 12:35:59 · EMP ok=6080 fail=80 941ms · SHE ok=3060 fail=20 521ms
+#1560 12:46:39 · EMP ok=6160 fail=80 932ms · SHE ok=3100 fail=20 688ms
+#1580 12:57:13 · EMP ok=6240 fail=80 926ms · SHE ok=3140 fail=20 702ms
+#1600 14:21:43 · EMP ok=6320 fail=80 1638ms · SHE ok=3180 fail=20 686ms
+#1620 14:32:19 · EMP ok=6400 fail=80 660ms · SHE ok=3220 fail=20 460ms
+#1640 14:43:07 · EMP ok=6480 fail=80 1114ms · SHE ok=3260 fail=20 688ms
+#1660 14:53:42 · EMP ok=6560 fail=80 1670ms · SHE ok=3300 fail=20 633ms
+#1680 15:05:03 · EMP ok=6636 fail=84 747ms · SHE ok=3340 fail=20 506ms
+#1700 15:15:43 · EMP ok=6716 fail=84 1457ms · SHE ok=3380 fail=20 688ms
+#1720 15:26:11 · EMP ok=6796 fail=84 530ms · SHE ok=3420 fail=20 514ms
+#1740 15:36:38 · EMP ok=6876 fail=84 1218ms · SHE ok=3460 fail=20 688ms
+#1760 15:47:09 · EMP ok=6956 fail=84 692ms · SHE ok=3500 fail=20 443ms
+
+Ctrl+C — cerrando y generando resumen...
+──────────────────────── Resumen del benchmark continuo ────────────────────────
+Polls: 1769 · duración: 17:18:45
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Métrica                 ┃                  Emporia ┃                  Shelly ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ Lecturas OK             │                     6992 │                    3518 │
+│ Lecturas fallidas       │                       84 │                      20 │
+│ Latencia · promedio     │                  1620 ms │                  654 ms │
+│ Latencia · min–max      │               8–26533 ms │              1–14301 ms │
+│ Latencia · σ            │                  1786 ms │                  353 ms │
+│ Sensibilidad · rango    │           0.00–1699.58 W │          0.00–1480.80 W │
+│ watts                   │                          │                         │
+│ Consistencia · watts    │           4.45 ± 77.78 W │          9.26 ± 41.31 W │
+│ (media ± σ)             │                          │                         │
+│ HTTP status             │                 200×6992 │                200×3518 │
+│ Errores                 │ HTTPSConnectionPool(hos… │   <urlopen error [Errno │
+│                         │                          │      8] nodename nor se │
+└─────────────────────────┴──────────────────────────┴─────────────────────────┘

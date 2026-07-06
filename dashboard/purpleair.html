@@ -30,15 +30,24 @@
       --blue:#7A6326;--blue-bg:#F0E9D8;--blue-mid:#9B7B3A;           /* ochre — solo monitores / enlaces */
       --r:5px;
     }
-    @media(prefers-color-scheme:dark){:root{
-      --maroon:#D98880;--ochre:#C6A667;--sage:#93A87E;--terracotta:#CB8560;
-      --bg:#1A1714;--surface:#241F1B;--border:#3A342C;--text:#F2EBDE;--muted:#9C9284;--hint:#6B6255;
+    @media(prefers-color-scheme:dark){
+     :root{
+      --maroon:#D98880;--ochre:#D4AF37;--sage:#93A87E;--terracotta:#CB8560;
+      --bg:#1A1714;--surface:#241F1B;--border:#574F3E;--text:#F2EBDE;--muted:#9C9284;--hint:#8A8072;
       --green:#93A87E;--green-bg:#2A3322;--green-mid:#7E9A5E;
-      --amber:#C6A667;--amber-bg:#3A2F15;--amber-mid:#C2A05A;
+      --amber:#D4AF37;--amber-bg:#3A2F15;--amber-mid:#C2A05A;
       --orange:#CB8560;--orange-bg:#3E2A1B;--orange-mid:#C57A4C;
       --red:#E0A29B;--red-bg:#3E1E1B;--red-mid:#D06E6E;
-      --blue:#C6A667;--blue-bg:#3A3115;--blue-mid:#C2A05A;
-    }}
+      --blue:#D4AF37;--blue-bg:#3A3115;--blue-mid:#C2A05A;
+     }
+     /* Contraste dark: números grandes y de tabla en claro (los inline pmColor
+        semánticos de AVG/PM se mantienen: son legibles y codifican la banda AQI). */
+     .ros-kpi .k-val{color:#F0F0F0 !important;}
+     .alert-table td,.ros-table td{color:#F0F0F0;}
+     .alert-table td.num,.ros-table td.num{color:#F0F0F0;}
+     /* faint line (serie completa) un poco más visible sobre fondo oscuro */
+     .aire-line svg path[stroke-opacity="0.2"]{stroke-opacity:.34;}
+    }
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:var(--font-sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.55;min-height:100vh;display:flex;flex-direction:column;}
     .topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 28px 16px;border-bottom:1px solid var(--border);background:var(--surface);}

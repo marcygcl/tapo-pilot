@@ -1,0 +1,41 @@
+name: Collect PurpleAir data
+
+on:
+  workflow_dispatch:
+  # Trigger externo (p.ej. cron-job.org) vía POST a /repos/{owner}/{repo}/dispatches
+  # con body {"event_type":"purpleair-collect"}.
+  repository_dispatch:
+    types: [purpleair-collect]
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      PURPLEAIR_API_KEY: ${{ secrets.PURPLEAIR_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - run: uv sync
+
+      - name: Run PurpleAir collector
+        env:
+          TIMEZONE: America/Bogota
+        run: uv run python collectors/purpleair.py --once
+
+      - name: Commit CSV data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add energy_logs/purpleair/
+          git diff --staged --quiet && echo "No new data" && exit 0
+          git stash
+          git pull --rebase
+          git stash pop
+          git add energy_logs/purpleair/
+          git commit -m "data(purpleair): $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push
