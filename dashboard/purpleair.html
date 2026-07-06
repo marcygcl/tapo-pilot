@@ -148,6 +148,21 @@
     .marker-cluster{background:transparent;}
     .marker-cluster div{background:var(--maroon);color:#fff;font-family:var(--font-sans);font-weight:600;font-size:11px;opacity:.92;}
     .marker-cluster{box-shadow:0 0 0 4px rgba(128,0,0,.18);border-radius:50%;}
+    .ros-kpi .k-val[title]{cursor:help;}
+    .ros-kpi .k-note{font-size:10px;color:var(--hint);margin-top:5px;line-height:1.35;}
+    /* gráfico: tooltip de hover + aviso de serie parcial + placeholder de vacío */
+    .ex-chartwrap{position:relative;}
+    .ex-tooltip{position:absolute;display:none;pointer-events:none;z-index:20;background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--r);padding:6px 9px;font-size:11px;color:var(--text);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+    .ex-tooltip .tt-t{color:var(--ochre);font-weight:600;margin-bottom:2px;}
+    .ex-tooltip .tt-gap{color:var(--terracotta);font-style:italic;}
+    .ex-tooltip .tt-row{font-family:var(--font-mono);}
+    .ex-warn{font-size:11.5px;color:var(--terracotta);margin-bottom:8px;}
+    .ex-warn:empty{display:none;}
+    .ex-placeholder{display:none;text-align:center;color:var(--muted);padding:26px 20px;line-height:1.6;font-size:13px;}
+    .ex-placeholder.show{display:block;}
+    .ex-placeholder .ph-emoji{font-size:26px;}
+    .ex-placeholder .ph-reasons{font-size:12px;color:var(--hint);margin:8px auto 14px;max-width:520px;}
     @media(max-width:900px){.ex-mapwrap{flex-direction:column;}.ex-listpanel{width:100%;}.ex-list{max-height:280px;}}
 
     /* ---- footer institucional ---- */
@@ -257,9 +272,14 @@
   <!-- Gráfico histórico (motor SVG del Tab 1) -->
   <div class="chart-box">
     <div class="section-title" id="exChartTitle"></div>
-    <div class="aire-line" id="exChart"></div>
+    <div id="exChartWarn" class="ex-warn"></div>
+    <div class="ex-chartwrap">
+      <div class="aire-line" id="exChart"></div>
+      <div class="ex-tooltip" id="exTooltip"></div>
+    </div>
     <div class="cmp-legend" id="exChartLeg"></div>
     <div id="exChartNote" style="font-size:10.5px;color:var(--hint);margin-top:8px;"></div>
+    <div id="exPlaceholder" class="ex-placeholder"></div>
   </div>
 </div>
 </div><!-- /panel-explorer -->
