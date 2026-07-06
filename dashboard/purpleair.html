@@ -140,7 +140,10 @@
     .ex-row.sel{background:var(--blue-bg);box-shadow:inset 3px 0 0 var(--maroon);}
     .ex-row.off{color:var(--hint);}
     .ex-row .dotm{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:1px solid var(--border);}
-    .ex-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ex-row .nm{flex:1;min-width:0;}
+    .ex-row .nm .t{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ex-row .nm .sub{display:block;font-size:10px;color:var(--hint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
+    .ex-row .nm .sub .armdot{display:inline-block;width:7px;height:7px;border-radius:2px;vertical-align:middle;margin-right:3px;}
     .ex-row .pm{font-family:var(--font-mono);font-size:11.5px;}
     .ex-row.emptyhint{cursor:default;color:var(--hint);font-style:italic;}
     .ex-row.emptyhint:hover{background:transparent;}
@@ -340,7 +343,7 @@ const I18N={
     tab_explorer:"Explorer",
     f_source:"Source", f_loc:"Locality", f_arm:"Arm", f_type:"Type", f_online:"Online only", f_reset:"Reset",
     loc_all:"All localities", arm_all:"All arms", type_all:"Indoor + outdoor", type_int:"Indoor", type_ext:"Outdoor",
-    crumb_red:"Network",
+    crumb_red:"Rosario network",
     kpi_pm_red:"Avg PM2.5 (filtered)", kpi_online:"Sensors online", kpi_diff_ei:"Ext−Int difference",
     kpi_school_pm:"Indoor PM2.5", kpi_arm:"Treatment arm", kpi_classrooms:"Sensors online",
     kpi_aula_pm:"PM2.5", kpi_type:"Type", kpi_last:"Last reading",
@@ -349,10 +352,20 @@ const I18N={
     chart_school:`School — indoor vs outdoor PM2.5 <span style="text-transform:none">(µg/m³)</span>`,
     chart_aula:`Classroom — PM2.5 <span style="text-transform:none">(µg/m³)</span>`,
     series_int:"Indoor avg", series_ext:"Outdoor avg",
-    withFilter:"with filter", noFilter:"no filter",
+    withFilter:"with Sqair filter", noFilter:"no filter",
     dataFrom:d=>`Data available from ${d}`,
     exNoData:"no sensors match the current filters",
     exErr:`<div class="err">Could not load <code>data/sensor_crosswalk.json</code>. Make sure it exists and the page is served from the repo.</div>`,
+    kpiBase:(n,h)=>`based on ${n.toLocaleString('en-US')} readings, ${h}h of data`,
+    kpiTip:(h,up)=>`average over ${h}h of available data · ${up}% uptime`,
+    tip_nodata:"No data in this range", pts:"pts",
+    sideBySide:(a,na,b,nb)=>`Indoor: ${a} (${na} pts) | Outdoor: ${b} (${nb} pts)`,
+    warn_int_only:"⚠️ Indoor data only", warn_ext_only:"⚠️ Outdoor data only",
+    gap_none:(a,b)=>`no data ${a}–${b}`,
+    ago_now:"just now", ago_min:m=>`${m} min ago`, ago_hour:h=>`${h}h ago`, ago_day:d=>`${d}d ago`,
+    ph_title:"No data in this range.",
+    ph_reasons:"Possible reasons: no sensors online in this filter, period outside available history (Rosario: since Jul 5), or all sensors offline.",
+    ph_adjust:"Adjust filters",
   },
   es:{
     locale:"es",
@@ -398,7 +411,7 @@ const I18N={
     tab_explorer:"Explorador",
     f_source:"Fuente", f_loc:"Localidad", f_arm:"Brazo", f_type:"Tipo", f_online:"Solo online", f_reset:"Reset",
     loc_all:"Todas las localidades", arm_all:"Todos los brazos", type_all:"Interior + exterior", type_int:"Interior", type_ext:"Exterior",
-    crumb_red:"Red",
+    crumb_red:"Red Rosario",
     kpi_pm_red:"PM2.5 promedio (filtrado)", kpi_online:"Sensores online", kpi_diff_ei:"Diferencia ext−int",
     kpi_school_pm:"PM2.5 interior", kpi_arm:"Brazo de tratamiento", kpi_classrooms:"Sensores online",
     kpi_aula_pm:"PM2.5", kpi_type:"Tipo", kpi_last:"Última lectura",
@@ -407,10 +420,20 @@ const I18N={
     chart_school:`Colegio — PM2.5 interior vs exterior <span style="text-transform:none">(µg/m³)</span>`,
     chart_aula:`Aula — PM2.5 <span style="text-transform:none">(µg/m³)</span>`,
     series_int:"Prom. interior", series_ext:"Prom. exterior",
-    withFilter:"con filtro", noFilter:"sin filtro",
+    withFilter:"con filtro Sqair", noFilter:"sin filtro",
     dataFrom:d=>`Datos disponibles desde ${d}`,
     exNoData:"ningún sensor coincide con los filtros",
     exErr:`<div class="err">No se pudo cargar <code>data/sensor_crosswalk.json</code>. Verificá que exista y que la página se sirva desde el repo.</div>`,
+    kpiBase:(n,h)=>`basado en ${n.toLocaleString('es')} lecturas, ${h}h de datos`,
+    kpiTip:(h,up)=>`promedio de ${h}h de datos disponibles · ${up}% uptime`,
+    tip_nodata:"Sin datos en este rango", pts:"pts",
+    sideBySide:(a,na,b,nb)=>`Interior: ${a} (${na} pts) | Exterior: ${b} (${nb} pts)`,
+    warn_int_only:"⚠️ Solo datos de interior", warn_ext_only:"⚠️ Solo datos de exterior",
+    gap_none:(a,b)=>`sin datos ${a}–${b}`,
+    ago_now:"recién", ago_min:m=>`hace ${m} min`, ago_hour:h=>`hace ${h}h`, ago_day:d=>`hace ${d}d`,
+    ph_title:"Sin datos en este rango.",
+    ph_reasons:"Razones posibles: sin sensores online en este filtro, período fuera del histórico disponible (Rosario: desde 5 Jul), todos los sensores offline.",
+    ph_adjust:"Ajustar filtros",
   },
 };
 let LANG = (localStorage.getItem("purpleair_lang")==="es") ? "es" : "en";   // default: English
@@ -701,8 +724,9 @@ function loadStatsJson(){
 }
 
 // ===================== EXPLORER (ex*) — mapa + KPIs + gráfico sobre UN estado compartido =====================
-// Estado único de selección: nivel (red|colegio|aula) + filtros + fechas. El mapa, los KPIs, la lista
-// y el gráfico son tres vistas del mismo estado — cualquier interacción re-renderiza los tres.
+// Estado único: nivel (red|colegio|aula) + filtros + fechas. Mapa, KPIs, lista y gráfico son vistas del
+// mismo estado; cualquier interacción re-renderiza las tres. Todos los promedios se calculan SOLO sobre
+// los datos disponibles en el rango (nunca se asume 0 ni se interpola) y cada métrica muestra su base.
 const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function pmHex(v){
   if(v==null)return cssVar("--muted");
@@ -714,15 +738,15 @@ function pmHex(v){
 const exArmKey=t=>t==="Filters & monitors"?"both":"mon";
 const exMean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const exKey=s=>s.source==="purpleair"?("pa:"+s.purpleair_id):("ro:"+s.sensor_name);
-const exFmtTs=s=>{if(!s)return"—";const d=new Date(s);return isNaN(d)?"—":d.toLocaleString(T().locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});};
+const EX_GAP=30*60*1000;   // corta la línea si hay un hueco > 30 min
 
 const _ex={
   level:'red', school:null, sensor:null,
   filters:{source:'both', localidad:'', arm:'', tipo:'all', onlyOnline:false},
   from:null, to:null,
 };
-let _exLoaded=false,_exXW=null,_exLatest={},_exSeries={},_exFirstTs=null,
-    _exMap=null,_exLayer=null,_exSchoolsCache=[],_exListCollapsed=false,_exDataToken=0;
+let _exLoaded=false,_exXW=null,_exSeries={},_exFirstTs=null,
+    _exMap=null,_exLayer=null,_exSchoolsCache=[],_exListCollapsed=false,_exDataToken=0,_exChartMeta=null;
 
 const exFetchCsv=(dir,date)=>new Promise(res=>{
   Papa.parse(`${REPO}/energy_logs/${dir}/${date}.csv`,{download:true,header:true,
@@ -730,11 +754,27 @@ const exFetchCsv=(dir,date)=>new Promise(res=>{
     error:()=>res([])});
 });
 
+// Rango por defecto: último mes (30 días).
 function exDefaultDates(){
-  const to=new Date(),from=new Date();from.setDate(from.getDate()-6);
+  const to=new Date(),from=new Date();from.setDate(from.getDate()-30);
   const f=d=>`${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`;
   return {from:f(from),to:f(to)};
 }
+function _exRangeMs(){
+  const f=new Date(_ex.from+"T00:00:00"),t=new Date(_ex.to+"T00:00:00");t.setDate(t.getDate()+1);
+  return Math.max(EX_GAP, t-f);
+}
+// Tiempo relativo ("hace 5 min").
+function exAgo(ts){
+  if(!ts)return"—";
+  const L=T(),m=Math.floor(Math.max(0,Date.now()-ts)/60000);
+  if(m<1)return L.ago_now;
+  if(m<60)return L.ago_min(m);
+  const h=Math.floor(m/60); if(h<24)return L.ago_hour(h);
+  return L.ago_day(Math.floor(h/24));
+}
+const exClock=ts=>new Date(ts).toLocaleString(T().locale,{timeZone:TZ,hour:'2-digit',minute:'2-digit'});
+const exStampFull=ts=>ts?new Date(ts).toLocaleString(T().locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):"—";
 
 function exPopulateLocalidades(){
   if(!_exXW)return;
@@ -759,11 +799,14 @@ async function exLoad(){
   _ex.from=fromEl.value; _ex.to=toEl.value;
   await exLoadData();
   exInitMap();
+  // tooltip de hover del gráfico (se adjunta una vez; el wrap es estable entre renders)
+  const cw=document.querySelector(".ex-chartwrap");
+  cw.addEventListener('mousemove',exChartHover);
+  cw.addEventListener('mouseleave',()=>{document.getElementById("exTooltip").style.display="none";const g=document.getElementById("exGuide");if(g)g.setAttribute("opacity","0");});
   exRenderAll();
 }
 
-// Carga los CSV diarios del rango para AMBAS fuentes. Guarda: última lectura por sensor
-// (_exLatest, estado actual) y la serie temporal por sensor (_exSeries, para el gráfico).
+// Carga (lazy, por fecha) los CSV diarios del rango para AMBAS fuentes → serie temporal por sensor.
 async function exLoadData(){
   const token=++_exDataToken;
   const dates=aireDateRange(_ex.from,_ex.to);
@@ -773,21 +816,17 @@ async function exLoadData(){
     Promise.all(dates.map(d=>exFetchCsv("purpleair",d))),
   ]);
   if(token!==_exDataToken)return;   // una carga más nueva empezó; descarta ésta
-  const latest={},series={};let first=null;
+  const series={};let first=null;
   const add=(key,ts,pm)=>{
+    if(pm==null)return;
     const t=new Date(ts).getTime(); if(isNaN(t))return;
-    const cur=latest[key]||(latest[key]={ts:"",pm25:null,validTs:null});
-    if(ts>cur.ts){cur.ts=ts;cur.pm25=pm;}
-    if(pm!=null){
-      if(!cur.validTs||ts>cur.validTs)cur.validTs=ts;
-      (series[key]||(series[key]=[])).push({t,pm25:pm});
-      if(first===null||t<first)first=t;
-    }
+    (series[key]||(series[key]=[])).push({t,pm25:pm});
+    if(first===null||t<first)first=t;
   };
   ros.flat().forEach(r=>{const v=parseFloat(r.pm25);add("ro:"+r.station_id,r.timestamp,isNaN(v)?null:v);});
   pa.flat().forEach(r=>{const v=parseFloat(r.pm25);add("pa:"+parseInt(r.sensor_id),r.timestamp,isNaN(v)?null:v);});
   Object.values(series).forEach(a=>a.sort((x,y)=>x.t-y.t));
-  _exLatest=latest; _exSeries=series; _exFirstTs=first;
+  _exSeries=series; _exFirstTs=first;
 }
 
 // ---- filtros ----
@@ -800,29 +839,40 @@ function exStructural(s){   // source / localidad / arm (definen visibilidad)
 }
 const exTipoOk=x=>{const t=_ex.filters.tipo;return t==='all'||(t==='int'&&!x.exterior)||(t==='ext'&&x.exterior);};
 
-// Escuelas agregadas con filtros estructurales. onlyOnline filtra al final.
+// Estadística sobre datos disponibles para un set de claves de sensor: media, nº de lecturas,
+// horas de datos (span) y uptime (fracción de ventanas de 30 min con dato dentro del rango pedido).
+function exStats(keys){
+  let sum=0,n=0,mn=Infinity,mx=-Infinity; const bins=new Set();
+  for(const k of keys){const a=_exSeries[k]; if(!a)continue;
+    for(const p of a){sum+=p.pm25;n++;if(p.t<mn)mn=p.t;if(p.t>mx)mx=p.t;bins.add(Math.floor(p.t/EX_GAP));}}
+  if(!n)return{mean:null,count:0,hours:0,uptime:0,last:null};
+  const totalBins=Math.max(1,Math.round(_exRangeMs()/EX_GAP));
+  return{mean:sum/n,count:n,hours:(mx-mn)/3600000,uptime:Math.min(1,bins.size/totalBins),last:mx};
+}
+
+// Escuelas agregadas con filtros estructurales. online = tiene lecturas EN EL RANGO. onlyOnline filtra al final.
 function exSchools(){
   const by={};
   _exXW.forEach(s=>{
     if(!exStructural(s))return;
+    const key=exKey(s), ser=_exSeries[key]||[], online=ser.length>0;
     const g=by[s.school_uid]||(by[s.school_uid]={uid:s.school_uid,name:s.school_name,localidad:s.localidad,
       arm:s.treatment,armKey:exArmKey(s.treatment),lat:[],lon:[],sensors:[],sources:new Set()});
-    const rd=_exLatest[exKey(s)]||null;
-    const pm=rd&&rd.pm25!=null?rd.pm25:null;
     const hasFilter=s.source==='purpleair'?!!s.has_active_filter:(s.installed_filter===1||s.T_Both===1);
-    g.sensors.push({key:exKey(s),name:s.sensor_name,source:s.source,
-      classroom:s.classroom_name||s.classroom_token||"—",exterior:!!s.exterior,hasFilter,
-      pm,online:pm!=null,lastTs:rd?(rd.validTs||rd.ts):null});
+    g.sensors.push({key,name:s.sensor_name,source:s.source,classroom:s.classroom_name||s.classroom_token||"—",
+      exterior:!!s.exterior,hasFilter,online,pm:online?exMean(ser.map(p=>p.pm25)):null,
+      count:ser.length,lastTs:online?ser[ser.length-1].t:null});
     g.sources.add(s.source);
     if(s.lat){g.lat.push(s.lat);g.lon.push(s.lon);}
   });
   let arr=Object.values(by).map(g=>{
-    const inS=g.sensors.filter(x=>!x.exterior),exS=g.sensors.filter(x=>x.exterior);
-    const inPm=inS.filter(x=>x.online).map(x=>x.pm),exPm=exS.filter(x=>x.online).map(x=>x.pm);
-    const mi=exMean(inPm),me=exMean(exPm);
+    const inK=g.sensors.filter(x=>!x.exterior).map(x=>x.key),exK=g.sensors.filter(x=>x.exterior).map(x=>x.key);
+    const iSt=exStats(inK),eSt=exStats(exK);
     return {uid:g.uid,name:g.name,localidad:g.localidad,arm:g.arm,armKey:g.armKey,sensors:g.sensors,
-      nInt:inS.length,nExt:exS.length,nIntOn:inPm.length,nExtOn:exPm.length,
-      pmInt:mi,pmExt:me,diff:(mi!=null&&me!=null)?me-mi:null,
+      nInt:g.sensors.filter(x=>!x.exterior).length,nExt:g.sensors.filter(x=>x.exterior).length,
+      nIntOn:g.sensors.filter(x=>!x.exterior&&x.online).length,nExtOn:g.sensors.filter(x=>x.exterior&&x.online).length,
+      pmInt:iSt.mean,pmExt:eSt.mean,nIntPts:iSt.count,nExtPts:eSt.count,iHours:iSt.hours,iUptime:iSt.uptime,
+      diff:(iSt.mean!=null&&eSt.mean!=null)?eSt.mean-iSt.mean:null,
       lat:g.lat.length?exMean(g.lat):null,lon:g.lon.length?exMean(g.lon):null,
       online:g.sensors.some(x=>x.online),shared:g.sources.size>1,hasPA:g.sources.has("purpleair")};
   });
@@ -849,7 +899,6 @@ function exRenderAll(){
   if(!_exLoaded||!_exXW)return;
   const schools=exSchools();
   _exSchoolsCache=schools;
-  // si el colegio seleccionado ya no es visible con los filtros, subimos a red
   if(_ex.school&&!schools.some(s=>s.uid===_ex.school)){_ex.level='red';_ex.school=null;_ex.sensor=null;}
   document.getElementById("exErr").innerHTML="";
   exRenderCrumb();
@@ -876,42 +925,52 @@ function exRenderCrumb(){
 }
 
 const exArmBadge=k=>`<span class="badge ${k==='both'?'arm-both':'arm-mon'}">${k==='both'?T().arm_both:T().arm_mon}</span>`;
+// borde del pin según brazo (salvia / terracota / ocre para desconocido).
+const exArmStroke=k=>k==='both'?cssVar('--sage'):k==='mon'?cssVar('--terracotta'):cssVar('--ochre');
 
 function exRenderKpis(schools){
   const L=T(),el=document.getElementById("exKpis");
   const kv=v=>v==null?"—":v.toFixed(1);
-  const card=(lab,val,sub,color)=>`<div class="ros-kpi"><div class="k-lab">${lab}</div><div class="k-val" style="color:${color||'var(--maroon)'}">${val}</div><div class="k-sub">${sub||''}</div></div>`;
+  const up=u=>Math.round(u*100);
+  const card=(lab,val,note,color,tip)=>`<div class="ros-kpi"><div class="k-lab">${lab}</div>`+
+    `<div class="k-val" style="color:${color||'var(--maroon)'}"${tip?` title="${tip.replace(/"/g,'&quot;')}"`:''}>${val}</div>`+
+    `${note?`<div class="k-note">${note}</div>`:''}</div>`;
 
   if(_ex.level==='aula'&&_ex.sensor){
-    const f=exFindSensor(_ex.sensor);
-    if(!f){el.innerHTML="";return;}
-    const x=f.sensor;
+    const f=exFindSensor(_ex.sensor); if(!f){el.innerHTML="";return;}
+    const x=f.sensor, st=exStats([x.key]);
     const typ=(x.exterior?L.exterior:L.interior)+(x.source==='purpleair'?` · ${x.hasFilter?L.withFilter:L.noFilter}`:'');
     el.innerHTML=
-      card(L.kpi_aula_pm,x.online?kv(x.pm):"—","µg/m³",x.online?pmColor(x.pm):'var(--muted)')+
-      card(L.kpi_type,`<span style="font-size:20px">${typ}</span>`,f.school.name,'var(--text)')+
-      card(L.kpi_last,`<span style="font-size:19px">${exFmtTs(x.lastTs)}</span>`,x.online?'':L.offline_lbl,'var(--text)');
+      card(L.kpi_aula_pm, st.mean==null?"—":kv(st.mean), st.mean==null?L.tip_nodata:`µg/m³ · ${L.kpiBase(st.count,Math.round(st.hours))}`,
+        st.mean==null?'var(--muted)':pmColor(st.mean), st.mean==null?L.tip_nodata:L.kpiTip(Math.round(st.hours),up(st.uptime)))+
+      card(L.kpi_type, `<span style="font-size:19px">${typ}</span>`, f.school.name, 'var(--text)')+
+      card(L.kpi_last, `<span style="font-size:22px">${exAgo(x.lastTs)}</span>`, x.lastTs?exStampFull(x.lastTs):L.tip_nodata, 'var(--text)');
     return;
   }
   if(_ex.level==='colegio'&&_ex.school){
     const sc=exSchoolById(_ex.school); if(!sc){el.innerHTML="";return;}
     const onCount=sc.nIntOn+sc.nExtOn, total=sc.nInt+sc.nExt;
     el.innerHTML=
-      card(L.kpi_school_pm,kv(sc.pmInt),"µg/m³",sc.pmInt==null?'var(--muted)':pmColor(sc.pmInt))+
-      card(L.kpi_arm,`<span style="font-size:20px">${exArmBadge(sc.armKey)}</span>`,sc.localidad||'','var(--text)')+
-      card(L.kpi_classrooms,`${onCount}/${total}`,`${sc.nInt} ${L.interior} · ${sc.nExt} ${L.exterior}`,'var(--maroon)');
+      card(L.kpi_school_pm, kv(sc.pmInt), sc.pmInt==null?L.tip_nodata:`µg/m³ · ${L.kpiBase(sc.nIntPts,Math.round(sc.iHours))}`,
+        sc.pmInt==null?'var(--muted)':pmColor(sc.pmInt), sc.pmInt==null?L.tip_nodata:L.kpiTip(Math.round(sc.iHours),up(sc.iUptime)))+
+      card(L.kpi_arm, `<span style="font-size:20px">${exArmBadge(sc.armKey)}</span>`, sc.localidad||'', 'var(--text)')+
+      card(L.kpi_classrooms, `${onCount}/${total}`, `${sc.nInt} ${L.interior} · ${sc.nExt} ${L.exterior}`, 'var(--maroon)');
     return;
   }
   // ---- red ----
   const sensors=schools.flatMap(s=>s.sensors).filter(exTipoOk);
   const online=sensors.filter(x=>x.online);
-  const intPm=online.filter(x=>!x.exterior).map(x=>x.pm),extPm=online.filter(x=>x.exterior).map(x=>x.pm);
-  const pmAvg=_ex.filters.tipo==='ext'?exMean(extPm):_ex.filters.tipo==='int'?exMean(intPm):exMean(online.map(x=>x.pm));
-  const diff=(intPm.length&&extPm.length)?(exMean(extPm)-exMean(intPm)):null;
+  const intK=sensors.filter(x=>!x.exterior).map(x=>x.key), extK=sensors.filter(x=>x.exterior).map(x=>x.key);
+  const iSt=exStats(intK), eSt=exStats(extK), aSt=exStats([...intK,...extK]);
+  const pm=_ex.filters.tipo==='ext'?eSt:_ex.filters.tipo==='int'?iSt:aSt;
+  const diff=(iSt.mean!=null&&eSt.mean!=null)?(eSt.mean-iSt.mean):null;
   el.innerHTML=
-    card(L.kpi_pm_red,kv(pmAvg),"µg/m³",pmAvg==null?'var(--muted)':pmColor(pmAvg))+
-    card(L.kpi_online,`${online.length}/${sensors.length}`,`${schools.length} ${L.list_schools.toLowerCase()}`,'var(--maroon)')+
-    card(L.kpi_diff_ei,diff==null?"—":((diff>0?"+":"")+diff.toFixed(1)),"µg/m³",diff==null?'var(--muted)':(diff>0?'var(--red-mid)':'var(--green-mid)'));
+    card(L.kpi_pm_red, pm.mean==null?"—":kv(pm.mean), pm.mean==null?L.tip_nodata:`µg/m³ · ${L.kpiBase(pm.count,Math.round(pm.hours))}`,
+      pm.mean==null?'var(--muted)':pmColor(pm.mean), pm.mean==null?L.tip_nodata:L.kpiTip(Math.round(pm.hours),up(pm.uptime)))+
+    card(L.kpi_online, `${online.length}/${sensors.length}`, `${schools.length} ${L.list_schools.toLowerCase()}`, 'var(--maroon)')+
+    card(L.kpi_diff_ei, diff==null?"—":((diff>0?"+":"")+diff.toFixed(1)),
+      (iSt.count||eSt.count)?L.sideBySide(kv(iSt.mean),iSt.count,kv(eSt.mean),eSt.count):L.tip_nodata,
+      diff==null?'var(--muted)':(diff>0?'var(--red-mid)':'var(--green-mid)'));
 }
 
 // ---- mapa ----
@@ -928,8 +987,9 @@ function exPopup(s){
     `<div class="p-name">${s.name}${s.hasPA?` · ${L2.map_pa.split('(')[0].trim()}`:''}</div>`+
     `<div class="p-meta">${s.localidad||'—'} · <b>${s.armKey==='both'?L2.arm_both:L2.arm_mon}</b></div>`+
     `<div>${L2.pop_sensors}: ${s.nIntOn+s.nExtOn}/${s.nInt+s.nExt} (${s.nInt} ${L2.interior} · ${s.nExt} ${L2.exterior})</div>`+
-    `<div>${L2.pop_pm}: <b style="color:${pmColor(s.pmInt)}">${pmTxt(s.pmInt)}</b> / <b style="color:${pmColor(s.pmExt)}">${pmTxt(s.pmExt)}</b> µg/m³</div>`+
-    `<div style="color:var(--muted);font-size:10.5px;margin-top:3px;">${L2.pop_last}: ${exFmtTs(lastTs)}</div></div>`;
+    `<div>${L2.pop_pm}: <b style="color:${pmColor(s.pmInt)}">${pmTxt(s.pmInt)}</b> / <b style="color:${pmColor(s.pmExt)}">${pmTxt(s.pmExt)}</b> µg/m³ `+
+      `<span style="color:var(--hint)">(${s.nIntPts}·${s.nExtPts} ${L2.pts})</span></div>`+
+    `<div style="color:var(--muted);font-size:10.5px;margin-top:3px;">${L2.pop_last}: ${exAgo(lastTs)}</div></div>`;
 }
 function exRenderMap(schools){
   if(!_exMap)return;
@@ -939,7 +999,7 @@ function exRenderMap(schools){
   _exLayer=useCluster?L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:45,spiderfyOnMaxZoom:true}):L.layerGroup();
   pins.forEach(s=>{
     const sel=_ex.school===s.uid;
-    const stroke=sel?cssVar('--maroon'):(s.hasPA?cssVar('--text'):(s.armKey==='both'?cssVar('--sage'):cssVar('--terracotta')));
+    const stroke=sel?cssVar('--maroon'):(s.hasPA?cssVar('--text'):exArmStroke(s.armKey));
     const m=L.circleMarker([s.lat,s.lon],{radius:sel?10:(s.hasPA?9:6),fillColor:pmHex(s.pmInt),
       color:stroke,weight:sel?4:(s.hasPA?3:2),opacity:1,fillOpacity:0.85});
     m.on('click',()=>exSelectSchool(s.uid));
@@ -950,7 +1010,7 @@ function exRenderMap(schools){
 }
 function exFlyToSchool(uid){
   const s=exSchoolById(uid);
-  if(s&&s.lat!=null&&_exMap)_exMap.setView([s.lat,s.lon],Math.max(_exMap.getZoom(),13));
+  if(s&&s.lat!=null&&_exMap)_exMap.setView([s.lat,s.lon],Math.max(_exMap.getZoom(),14));
 }
 
 // ---- lista ----
@@ -966,17 +1026,21 @@ function exRenderList(schools){
     el.innerHTML=sens.map(x=>{
       const dot=`<span class="dotm" style="background:${x.online?pmHex(x.pm):cssVar('--muted')}"></span>`;
       const t=x.exterior?L.exterior:L.interior;
+      const sub=`${x.source==='purpleair'?'PurpleAir':'Rosario'} · ${x.online?`${x.count} ${L.pts}`:L.offline_lbl}`;
       return `<div class="ex-row ${_ex.sensor===x.key?'sel':''} ${x.online?'':'off'}" onclick="exSelectSensor('${x.key}')">`+
-        `${dot}<span class="nm">${x.classroom} · ${t}${x.source==='purpleair'?' · PA':''}</span>`+
-        `<span class="pm">${x.online?pm(x.pm):L.offline_lbl}</span></div>`;
+        `${dot}<span class="nm"><span class="t">${x.classroom} · ${t}</span><span class="sub">${sub}</span></span>`+
+        `<span class="pm">${x.online?pm(x.pm):'—'}</span></div>`;
     }).join("")||`<div class="ex-row emptyhint">${L.exNoData}</div>`;
   }else{
     ttl.textContent=`${L.list_schools} (${schools.length})`;
     const list=[...schools].sort((a,b)=>((b.pmInt==null?-Infinity:b.pmInt)-(a.pmInt==null?-Infinity:a.pmInt)));
     el.innerHTML=list.map(s=>{
       const dot=`<span class="dotm" style="background:${s.online?pmHex(s.pmInt):cssVar('--muted')}"></span>`;
+      const armd=`<span class="armdot" style="background:${exArmStroke(s.armKey)}"></span>`;
+      const sub=`${armd}${s.localidad||'—'} · ${s.online?`${s.nIntOn+s.nExtOn}/${s.nInt+s.nExt}`:L.offline_lbl}`;
       return `<div class="ex-row ${_ex.school===s.uid?'sel':''} ${s.online?'':'off'}" onclick="exSelectSchool('${s.uid}')">`+
-        `${dot}<span class="nm">${s.name}${s.hasPA?' ★':''}</span><span class="pm">${pm(s.pmInt)}</span></div>`;
+        `${dot}<span class="nm"><span class="t">${s.name}${s.hasPA?' ★':''}</span><span class="sub">${sub}</span></span>`+
+        `<span class="pm">${pm(s.pmInt)}</span></div>`;
     }).join("")||`<div class="ex-row emptyhint">${L.exNoData}</div>`;
   }
 }
@@ -986,17 +1050,17 @@ function exToggleList(){
   document.getElementById("exListToggle").textContent=_exListCollapsed?'+':'–';
 }
 
-// ---- gráfico histórico (mismo motor SVG del Tab 1) ----
-function exAggSeries(keys,binMs){
+// ---- gráfico histórico (motor SVG del Tab 1) con gaps>30min y tooltip de hover ----
+function exAggSeries(keys){
   const bins={};
-  keys.forEach(k=>(_exSeries[k]||[]).forEach(p=>{const b=Math.floor(p.t/binMs)*binMs;(bins[b]||(bins[b]=[])).push(p.pm25);}));
+  keys.forEach(k=>(_exSeries[k]||[]).forEach(p=>{const b=Math.floor(p.t/EX_GAP)*EX_GAP;(bins[b]||(bins[b]=[])).push(p.pm25);}));
   return Object.keys(bins).map(b=>({x:+b,y:exMean(bins[b])})).sort((a,b)=>a.x-b.x);
 }
-function exDrawChart(elId,series){
-  const el=document.getElementById(elId);el.innerHTML="";
+function exDrawChart(series){
+  const el=document.getElementById("exChart");el.innerHTML="";
   const W=1040,H=340,PL=40,PR=14,PT=14,PB=28;
   const all=series.flatMap(s=>s.points);
-  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="14">${T().noChartData}</text></svg>`;return;}
+  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="14">${T().noChartData}</text></svg>`;_exChartMeta=null;return;}
   const xs=all.map(p=>p.x),ys=all.map(p=>p.y);
   let xmin=Math.min(...xs),xmax=Math.max(...xs),ymax=Math.max(...ys,1)*1.12;
   if(xmax===xmin)xmax=xmin+1;
@@ -1006,37 +1070,86 @@ function exDrawChart(elId,series){
   const xlab=ms=>new Date(ms).toLocaleString(T().locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
   const xt=[xmin,(xmin+xmax)/2,xmax].map((x,i)=>`<text x="${X(x).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':i===2?'end':'middle'}" font-size="10" fill="#999">${xlab(x)}</text>`).join("");
   const paths=series.map(s=>{if(!s.points.length)return"";let d="",prev=null;
-    s.points.forEach(p=>{d+=(prev===null||p.x-prev>AIRE_MAX_GAP_MS?"M":"L")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)+" ";prev=p.x;});
+    s.points.forEach(p=>{d+=(prev===null||p.x-prev>EX_GAP?"M":"L")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)+" ";prev=p.x;});
     return `<path d="${d.trim()}" fill="none" stroke="${s.color}" stroke-width="1.9" stroke-opacity="1"/>`;}).join("");
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${paths}${xt}</svg>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><line id="exGuide" x1="0" y1="${PT}" x2="0" y2="${H-PB}" stroke="var(--ochre)" stroke-width="1" opacity="0"/>${grid}${paths}${xt}</svg>`;
+  // gaps (unión de todas las series): intervalos > 30 min sin ningún dato
+  const uniq=[...new Set(all.map(p=>p.x))].sort((a,b)=>a-b);
+  const gaps=[];for(let i=1;i<uniq.length;i++)if(uniq[i]-uniq[i-1]>EX_GAP)gaps.push({a:uniq[i-1],b:uniq[i]});
+  _exChartMeta={W,PL,PR,PT,H,PB,xmin,xmax,series,gaps};
+}
+function exChartHover(e){
+  const m=_exChartMeta; const tt=document.getElementById("exTooltip");
+  const svg=document.querySelector("#exChart svg");
+  if(!m||!svg){tt.style.display="none";return;}
+  const rect=svg.getBoundingClientRect();
+  const vx=(e.clientX-rect.left)/rect.width*m.W;
+  const guide=document.getElementById("exGuide");
+  if(vx<m.PL||vx>m.W-m.PR){tt.style.display="none";if(guide)guide.setAttribute("opacity","0");return;}
+  const t=m.xmin+(vx-m.PL)/(m.W-m.PL-m.PR)*(m.xmax-m.xmin);
+  if(guide){guide.setAttribute("x1",vx.toFixed(1));guide.setAttribute("x2",vx.toFixed(1));guide.setAttribute("opacity","0.5");}
+  const L=T();
+  const gap=m.gaps.find(g=>t>g.a&&t<g.b);
+  let html;
+  if(gap){html=`<div class="tt-gap">${L.gap_none(exClock(gap.a),exClock(gap.b))}</div>`;}
+  else{
+    let rows="";
+    m.series.forEach(s=>{if(!s.points.length)return;
+      let best=null,bd=Infinity;for(const p of s.points){const dd=Math.abs(p.x-t);if(dd<bd){bd=dd;best=p;}}
+      if(best&&bd<=EX_GAP)rows+=`<div class="tt-row"><span style="color:${s.color}">■</span> ${s.label?s.label+': ':''}${best.y.toFixed(1)}</div>`;});
+    html=`<div class="tt-t">${new Date(t).toLocaleString(L.locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`+(rows||`<div class="tt-gap">${L.tip_nodata}</div>`);
+  }
+  tt.innerHTML=html; tt.style.display="block";
+  const wrap=document.querySelector(".ex-chartwrap").getBoundingClientRect();
+  let lx=e.clientX-wrap.left+14; if(lx>wrap.width-150)lx=e.clientX-wrap.left-150;
+  tt.style.left=lx+"px"; tt.style.top=(e.clientY-wrap.top+10)+"px";
 }
 function exRenderChart(schools){
-  const L=T(),binMs=30*60*1000;
+  const L=T();
   const sage=cssVar('--sage'),terra=cssVar('--terracotta');
-  let series=[],title='',legs=[];
+  let series=[],title='',legs=[],warn='';
   if(_ex.level==='aula'&&_ex.sensor){
     const f=exFindSensor(_ex.sensor);
     const pts=(_exSeries[_ex.sensor]||[]).map(p=>({x:p.t,y:p.pm25}));
-    series=[{color:f&&f.sensor.exterior?terra:sage,points:pts}];
+    series=[{color:f&&f.sensor.exterior?terra:sage,points:pts,label:f&&f.sensor.exterior?L.exterior:L.interior}];
     title=L.chart_aula;
   }else{
-    let sensors,src;
+    let sensors;
     if(_ex.school){const sc=exSchoolById(_ex.school);sensors=sc?sc.sensors:[];title=L.chart_school;}
     else{sensors=schools.flatMap(s=>s.sensors);title=L.chart_red;}
     sensors=sensors.filter(exTipoOk);
     const intKeys=sensors.filter(x=>!x.exterior).map(x=>x.key),extKeys=sensors.filter(x=>x.exterior).map(x=>x.key);
-    if(_ex.filters.tipo!=='ext'){series.push({color:sage,points:exAggSeries(intKeys,binMs)});legs.push(`<span class="dot" style="background:${sage}"></span>${L.series_int}`);}
-    if(_ex.filters.tipo!=='int'){series.push({color:terra,points:exAggSeries(extKeys,binMs)});legs.push(`<span class="dot" style="background:${terra}"></span>${L.series_ext}`);}
+    const intPts=(_ex.filters.tipo!=='ext')?exAggSeries(intKeys):[];
+    const extPts=(_ex.filters.tipo!=='int')?exAggSeries(extKeys):[];
+    if(_ex.filters.tipo!=='ext'){series.push({color:sage,points:intPts,label:L.series_int});legs.push(`<span class="dot" style="background:${sage}"></span>${L.series_int}`);}
+    if(_ex.filters.tipo!=='int'){series.push({color:terra,points:extPts,label:L.series_ext});legs.push(`<span class="dot" style="background:${terra}"></span>${L.series_ext}`);}
+    // aviso de serie parcial (una tiene datos, la otra no) cuando se piden ambas
+    if(_ex.filters.tipo==='all'){
+      if(intPts.length&&!extPts.length)warn=L.warn_int_only;
+      else if(!intPts.length&&extPts.length)warn=L.warn_ext_only;
+    }
   }
   document.getElementById("exChartTitle").innerHTML=title;
-  exDrawChart("exChart",series);
+  document.getElementById("exChartWarn").textContent=warn;
+
+  const hasData=series.some(s=>s.points.length);
+  const ph=document.getElementById("exPlaceholder"), chartWrap=document.querySelector(".ex-chartwrap");
+  if(!hasData){
+    chartWrap.style.display="none"; document.getElementById("exChartLeg").innerHTML=""; document.getElementById("exChartNote").textContent="";
+    ph.classList.add("show");
+    ph.innerHTML=`<div class="ph-emoji">📊</div><div>${L.ph_title}</div>`+
+      `<div class="ph-reasons">${L.ph_reasons}</div>`+
+      `<button class="map-filter aire-btn" onclick="exResetFilters()">${L.ph_adjust}</button>`;
+    _exChartMeta=null; return;
+  }
+  ph.classList.remove("show"); chartWrap.style.display="";
+  exDrawChart(series);
   document.getElementById("exChartLeg").innerHTML=legs.join("");
-  // "Datos desde <fecha>" si el rango pedido excede lo disponible
   const note=document.getElementById("exChartNote");
   if(_exFirstTs){
     const fd=new Date(_exFirstTs),fdStr=`${fd.getFullYear()}-${_pad(fd.getMonth()+1)}-${_pad(fd.getDate())}`;
     note.textContent=(fdStr>_ex.from)?L.dataFrom(fd.toLocaleDateString(L.locale,{timeZone:TZ,day:'numeric',month:'short',year:'numeric'})):"";
-  }else note.textContent=T().noChartData;
+  }else note.textContent="";
 }
 
 // ---- leyenda del mapa ----
