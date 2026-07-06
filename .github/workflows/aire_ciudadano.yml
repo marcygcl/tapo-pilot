@@ -1,0 +1,39 @@
+name: Collect Aire Ciudadano data
+
+on:
+  workflow_dispatch:
+  # Trigger externo (p.ej. cron-job.org) vía POST a /repos/{owner}/{repo}/dispatches
+  # con body {"event_type":"aire-ciudadano-collect"}.
+  repository_dispatch:
+    types: [aire-ciudadano-collect]
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - run: uv sync
+
+      - name: Run Aire Ciudadano collector
+        env:
+          TIMEZONE: America/Bogota
+        run: uv run python collectors/aire_ciudadano.py --once
+
+      - name: Commit CSV data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add energy_logs/aire_ciudadano/
+          git diff --staged --quiet && echo "No new data" && exit 0
+          git stash
+          git pull --rebase
+          git stash pop
+          git add energy_logs/aire_ciudadano/
+          git commit -m "data(aire_ciudadano): $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push
