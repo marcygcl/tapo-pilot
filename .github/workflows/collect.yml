@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      EMPORIA_EMAIL:    ${{ secrets.EMPORIA_EMAIL }}
+      EMPORIA_PASSWORD: ${{ secrets.EMPORIA_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -28,8 +31,6 @@ jobs:
 
       - name: Run Emporia collector
         env:
-          EMPORIA_EMAIL:    ${{ secrets.EMPORIA_EMAIL }}
-          EMPORIA_PASSWORD: ${{ secrets.EMPORIA_PASSWORD }}
           TIMEZONE:         America/Bogota
           SCHOOL_START:     "07:00"
           SCHOOL_END:       "16:00"

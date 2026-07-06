@@ -3,89 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Air Quality (PM2.5) — PurpleAir</title>
+  <title>Aire Escolar Bogotá</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
-    :root{--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,0.09);--text:#1a1a18;--muted:#6b6a66;--hint:#9c9a92;--green:#3b6d11;--green-bg:#eaf3de;--green-mid:#639922;--amber:#854f0b;--amber-bg:#faeeda;--amber-mid:#ef9f27;--orange:#9a4a06;--orange-bg:#fbe6d4;--orange-mid:#e8830c;--red:#a32d2d;--red-bg:#fcebeb;--red-mid:#e24b4a;--blue:#185fa5;--blue-bg:#e6f1fb;--blue-mid:#378add;--r:10px;}
-    @media(prefers-color-scheme:dark){:root{--bg:#181816;--surface:#222220;--border:rgba(255,255,255,0.09);--text:#eeebe3;--muted:#888780;--hint:#5f5e5a;--green:#97c459;--green-bg:#27500a;--green-mid:#639922;--amber:#ef9f27;--amber-bg:#633806;--amber-mid:#ba7517;--orange:#f0a85f;--orange-bg:#5c2f08;--orange-mid:#e8830c;--red:#f09595;--red-bg:#501313;--red-mid:#e24b4a;--blue:#85b7eb;--blue-bg:#0c447c;--blue-mid:#378add;}}
+    /* ===== Aire Escolar Bogotá — identidad ===== */
+    /* Fuentes: Crimson Pro (serif titulares/números grandes), IBM Plex Sans (body),
+       IBM Plex Mono (números tabulares en stats). */
+    :root{
+      --font-serif:'Crimson Pro',Georgia,'Times New Roman',serif;
+      --font-sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      --font-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+      /* Marca */
+      --maroon:#800000;--ochre:#9B7B3A;--sage:#4A5D3F;--terracotta:#A0522D;
+      /* Base */
+      --bg:#FAF7F2;--surface:#FFFDF9;--border:#E8E1D5;--text:#1C1917;--muted:#6B6459;--hint:#A99F8F;
+      /* Semánticos (bandas AQI + con/sin filtro), remapeados a la paleta cálida */
+      --green:#4A5D3F;--green-bg:#E9EDE2;--green-mid:#57703F;         /* sage — con filtro / bueno / positivo */
+      --amber:#7A5E1F;--amber-bg:#F3EAD6;--amber-mid:#9B7B3A;         /* ochre — moderado */
+      --orange:#8C4A28;--orange-bg:#F1E2D6;--orange-mid:#A0522D;      /* terracotta — sin filtro / dañino(sens) */
+      --red:#800000;--red-bg:#F3E1DD;--red-mid:#8E2B2B;               /* maroon — dañino / negativo */
+      --blue:#7A6326;--blue-bg:#F0E9D8;--blue-mid:#9B7B3A;           /* ochre — solo monitores / enlaces */
+      --r:5px;
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --maroon:#D98880;--ochre:#C6A667;--sage:#93A87E;--terracotta:#CB8560;
+      --bg:#1A1714;--surface:#241F1B;--border:#3A342C;--text:#F2EBDE;--muted:#9C9284;--hint:#6B6255;
+      --green:#93A87E;--green-bg:#2A3322;--green-mid:#7E9A5E;
+      --amber:#C6A667;--amber-bg:#3A2F15;--amber-mid:#C2A05A;
+      --orange:#CB8560;--orange-bg:#3E2A1B;--orange-mid:#C57A4C;
+      --red:#E0A29B;--red-bg:#3E1E1B;--red-mid:#D06E6E;
+      --blue:#C6A667;--blue-bg:#3A3115;--blue-mid:#C2A05A;
+    }}
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
-    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:.5px solid var(--border);background:var(--surface);}
-    .topbar h1{font-size:15px;font-weight:500;}.topbar p{font-size:11px;color:var(--muted);margin-top:1px;}
-    .topbar a{font-size:11px;color:var(--blue);text-decoration:none;}
-    .topbar-right{display:flex;align-items:center;gap:16px;}
-    .lang-toggle{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--hint);}
-    .lang-toggle button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:500;padding:2px 3px;font-family:inherit;}
-    .lang-toggle button.active{color:var(--text);text-decoration:underline;}
-    .wrap{padding:20px 24px;display:flex;flex-direction:column;gap:18px;max-width:1200px;margin:0 auto;}
-    .section-title{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
-    .chart-box{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:16px;}
-    .alert-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:12px;}
-    .alert-table th{text-align:left;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:.5px solid var(--border);background:var(--bg);}
-    .alert-table td{padding:9px 12px;border-bottom:.5px solid var(--border);}
+    body{font-family:var(--font-sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.55;min-height:100vh;display:flex;flex-direction:column;}
+    .topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 28px 16px;border-bottom:1px solid var(--border);background:var(--surface);}
+    .topbar h1{font-family:var(--font-serif);font-size:27px;font-weight:500;color:var(--maroon);letter-spacing:.005em;line-height:1.05;}
+    .topbar p{font-size:12.5px;color:var(--muted);margin-top:4px;}
+    .topbar a{font-size:12px;color:var(--blue);text-decoration:none;border-bottom:1px solid transparent;transition:color .12s,border-color .12s;}
+    .topbar a:hover{color:var(--maroon);border-bottom-color:var(--maroon);}
+    .topbar-right{display:flex;align-items:center;gap:18px;}
+    .lang-toggle{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--hint);}
+    .lang-toggle button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:500;padding:2px 3px;font-family:inherit;transition:color .12s;}
+    .lang-toggle button:hover{color:var(--maroon);}
+    .lang-toggle button.active{color:var(--maroon);text-decoration:underline;text-underline-offset:3px;}
+    .wrap{padding:28px 28px;display:flex;flex-direction:column;gap:26px;max-width:1180px;margin:0 auto;width:100%;}
+    .section-title{font-family:var(--font-sans);font-size:10.5px;font-weight:600;color:var(--ochre);text-transform:uppercase;letter-spacing:.11em;margin-bottom:12px;}
+    .chart-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;}
+    .alert-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:14px;}
+    .alert-table th{text-align:left;font-size:10px;font-weight:600;color:var(--ochre);text-transform:uppercase;letter-spacing:.06em;padding:11px 14px;border-bottom:1px solid var(--border);background:transparent;}
+    .alert-table td{padding:11px 14px;border-bottom:1px solid var(--border);}
     .alert-table tr:last-child td{border-bottom:none;}
-    .alert-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
-    .map-filter{margin-bottom:6px;padding:6px 8px;font-size:12px;border:.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);}
-    .cmp-legend{font-size:11px;color:var(--muted);margin-top:6px;}
-    .cmp-legend .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 10px;vertical-align:middle;}
-    .aire-controls{display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);}
-    .aire-controls label{display:flex;align-items:center;gap:6px;}
+    .alert-table td.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px;}
+    /* inputs (date, search, select) */
+    .map-filter,.ros-controls input,.ros-controls select{padding:6px 9px;font-size:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:inherit;}
+    /* botones: transparentes, borde fino ocre, hover granate, sin animación bouncy */
+    button.aire-btn,.map-filter.aire-btn{width:auto;cursor:pointer;background:transparent;border:1px solid var(--ochre);color:var(--ochre);padding:6px 14px;transition:color .12s,border-color .12s;}
+    button.aire-btn:hover,.map-filter.aire-btn:hover{color:var(--maroon);border-color:var(--maroon);}
+    .cmp-legend{font-size:11.5px;color:var(--muted);margin-top:8px;}
+    .cmp-legend .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 12px;vertical-align:middle;}
+    .aire-controls{display:flex;gap:22px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--muted);}
+    .aire-controls label{display:flex;align-items:center;gap:7px;}
     .aire-controls input[type=date]{width:auto;margin:0;}
-    .aire-controls input[type=range]{width:170px;margin:0;accent-color:var(--blue-mid);vertical-align:middle;}
-    .aire-controls .timeval{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;min-width:42px;}
-    button.aire-btn{width:auto;cursor:pointer;}
+    .aire-controls input[type=range]{width:180px;margin:0;accent-color:var(--maroon);vertical-align:middle;}
+    .aire-controls .timeval{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--maroon);font-weight:500;min-width:46px;}
     .aire-line svg{width:100%;height:360px;display:block;}
-    .err{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-mid);border-radius:var(--r);padding:11px 14px;font-size:12.5px;}
-    .err code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;}
+    .err{background:var(--red-bg);color:var(--red);border:1px solid var(--red-mid);border-radius:var(--r);padding:12px 15px;font-size:12.5px;}
+    .err code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:12px;font-family:var(--font-mono);}
 
-    /* ---- tabs / panels (Experimento · Red del Estudio · Mapa) ---- */
-    .tabs{display:flex;border-bottom:.5px solid var(--border);background:var(--surface);}
-    .tab{padding:10px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;}
-    .tab:hover{color:var(--text);}.tab.active{color:var(--text);border-bottom-color:var(--text);}
+    /* ---- tabs / panels (Experiment · Study network · Map) ---- */
+    .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);padding:0 16px;}
+    .tab{padding:12px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .12s,border-color .12s;}
+    .tab:hover{color:var(--text);}.tab.active{color:var(--maroon);border-bottom-color:var(--maroon);}
     .panel{display:none;}.panel.active{display:block;}
 
-    /* ---- Red del Estudio (rosario*) ---- */
-    .ros-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
-    .ros-kpi{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:13px 15px;}
-    .ros-kpi .k-lab{font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;}
-    .ros-kpi .k-val{font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px;}
-    .ros-kpi .k-sub{font-size:11px;color:var(--muted);margin-top:2px;}
-    .ros-controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);}
-    .ros-controls label{display:flex;align-items:center;gap:6px;}
-    .ros-controls input,.ros-controls select{font-size:12px;border:.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);padding:6px 8px;font-family:inherit;}
-    .ros-controls input[type=search]{min-width:190px;}
-    .seg{display:inline-flex;border:.5px solid var(--border);border-radius:8px;overflow:hidden;}
-    .seg button{background:var(--bg);border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:500;padding:6px 11px;font-family:inherit;border-left:.5px solid var(--border);}
+    /* ---- Study network (rosario*) ---- KPI: border-left granate, número serif, sin fondo ---- */
+    .ros-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:20px;}
+    .ros-kpi{background:transparent;border:none;border-left:3px solid var(--maroon);border-radius:0;padding:4px 0 4px 16px;}
+    .ros-kpi .k-lab{font-size:10px;font-weight:600;color:var(--ochre);text-transform:uppercase;letter-spacing:.08em;}
+    .ros-kpi .k-val{font-family:var(--font-serif);font-size:34px;font-weight:500;color:var(--maroon);line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums;}
+    .ros-kpi .k-sub{font-size:11.5px;color:var(--muted);margin-top:3px;}
+    .ros-controls{display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--muted);}
+    .ros-controls label{display:flex;align-items:center;gap:7px;}
+    .ros-controls input[type=search]{min-width:200px;}
+    .seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+    .seg button{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:500;padding:6px 13px;font-family:inherit;border-left:1px solid var(--border);transition:color .12s,background .12s;}
     .seg button:first-child{border-left:none;}
-    .seg button.active{background:var(--blue-bg);color:var(--blue);}
-    .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap;}
-    .badge.arm-both{background:var(--green-bg);color:var(--green);}
-    .badge.arm-mon{background:var(--blue-bg);color:var(--blue);}
-    .ros-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;}
-    .ros-table th{text-align:left;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:.5px solid var(--border);background:var(--bg);cursor:pointer;white-space:nowrap;}
+    .seg button:hover{color:var(--maroon);}
+    .seg button.active{background:var(--maroon);color:#fff;}
+    .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap;border:1px solid transparent;}
+    .badge.arm-both{background:transparent;color:var(--sage);border-color:var(--sage);}
+    .badge.arm-mon{background:transparent;color:var(--terracotta);border-color:var(--terracotta);}
+    .ros-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+    .ros-table th{text-align:left;font-size:10px;font-weight:600;color:var(--ochre);text-transform:uppercase;letter-spacing:.06em;padding:11px 14px;border-bottom:1px solid var(--border);background:transparent;cursor:pointer;white-space:nowrap;}
     .ros-table th.num{text-align:right;}
-    .ros-table td{padding:9px 12px;border-bottom:.5px solid var(--border);}
-    .ros-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
-    .ros-table tr.school-row{cursor:pointer;}
+    .ros-table td{padding:11px 14px;border-bottom:1px solid var(--border);}
+    .ros-table td.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px;}
+    .ros-table tr.school-row{cursor:pointer;transition:background .1s;}
     .ros-table tr.school-row:hover{background:var(--blue-bg);}
     .ros-table tr.offline td{color:var(--hint);}
     .ros-table tr.sensor-row td{background:var(--bg);font-size:12px;color:var(--muted);}
-    .ros-table tr.sensor-row td.first{padding-left:28px;}
-    .ros-caret{display:inline-block;width:10px;color:var(--hint);transition:transform .12s;}
+    .ros-table tr.sensor-row td.first{padding-left:30px;}
+    .ros-caret{display:inline-block;width:10px;color:var(--ochre);transition:transform .12s;}
     .ros-caret.open{transform:rotate(90deg);}
-    .ros-shared{font-size:9px;font-weight:600;color:var(--amber);border:.5px solid var(--amber-mid);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:middle;}
+    .ros-shared{font-family:var(--font-sans);font-size:9px;font-weight:600;color:var(--ochre);border:1px solid var(--ochre);border-radius:4px;padding:0 5px;margin-left:7px;vertical-align:middle;text-transform:uppercase;letter-spacing:.04em;}
 
-    /* ---- Mapa (mapa*) ---- */
-    #rosariomap{width:100%;height:calc(100vh - 165px);min-height:420px;background:var(--bg);}
-    .mapa-legend{position:absolute;right:14px;bottom:22px;z-index:600;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--text);box-shadow:0 2px 10px rgba(0,0,0,.12);}
-    .mapa-legend .row{display:flex;align-items:center;gap:6px;margin-top:4px;}
-    .mapa-legend .sw{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.25);}
-    .mapa-legend .hd{font-size:9px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 2px;}
-    .leaflet-popup-content{font-size:12px;}
-    .leaflet-popup-content .p-name{font-weight:600;font-size:12.5px;}
-    .leaflet-popup-content .p-meta{font-size:10.5px;color:#888;margin:2px 0 5px;}
+    /* ---- Map (mapa*) ---- */
+    #rosariomap{width:100%;height:calc(100vh - 185px);min-height:420px;background:var(--bg);}
+    .mapa-legend{position:absolute;right:16px;bottom:24px;z-index:600;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font-size:11px;color:var(--text);}
+    .mapa-legend .row{display:flex;align-items:center;gap:7px;margin-top:5px;}
+    .mapa-legend .sw{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid var(--border);}
+    .mapa-legend .hd{font-size:9px;font-weight:600;color:var(--ochre);text-transform:uppercase;letter-spacing:.06em;margin:9px 0 3px;}
+    .leaflet-popup-content{font-size:12px;font-family:var(--font-sans);}
+    .leaflet-popup-content .p-name{font-family:var(--font-serif);font-weight:600;font-size:14px;color:var(--maroon);}
+    .leaflet-popup-content .p-meta{font-size:10.5px;color:var(--muted);margin:2px 0 5px;}
+
+    /* ---- footer institucional ---- */
+    .site-footer{margin-top:auto;padding:18px 28px;border-top:1px solid var(--border);background:var(--surface);
+      font-family:var(--font-serif);font-size:13px;color:var(--muted);text-align:center;letter-spacing:.01em;}
+    .site-footer b{color:var(--maroon);font-weight:500;}
   </style>
 </head>
 <body>
@@ -181,6 +221,8 @@
   </div>
 </div><!-- /panel-mapa -->
 
+<footer class="site-footer"><b>Development Innovation Lab</b> · University of Chicago</footer>
+
 <script>
 // ===================== AIRE (PurpleAir PM2.5) — explorador de ventana horaria =====================
 // Self-contained: lee energy_logs/purpleair/YYYY-MM-DD.csv desde GitHub (raw). Un solo gráfico:
@@ -193,14 +235,14 @@ const TZ="America/Bogota";
 const I18N={
   en:{
     locale:"en-US",
-    docTitle:"Air Quality (PM2.5) — PurpleAir",
-    h1:"Air Quality — PM2.5",
-    subtitle:"Room 19 with Sqair filter vs room without filter · PurpleAir sensors",
+    docTitle:"Aire Escolar Bogotá",
+    h1:"Aire Escolar Bogotá",
+    subtitle:"Monitoring air quality in Bogotá public schools",
     back:"← Dashboard",
-    intro:`Air quality (PM2.5): <b style="color:#3b6d11">Room 19 with Sqair filter</b> vs <b style="color:#e8830c">room without filter</b> (reference). Drag the sliders to explore any time window.`,
+    intro:`Air quality (PM2.5): <b style="color:var(--sage)">Room 19 with Sqair filter</b> vs <b style="color:var(--terracotta)">room without filter</b> (reference). Drag the sliders to explore any time window.`,
     dateFrom:"From date", dateTo:"To date", refresh:"Refresh",
     timeFrom:"From time", timeTo:"To time",
-    chartTitle:(a,b)=>`PM2.5 (µg/m³) — selected window ${a}–${b} highlighted`,
+    chartTitle:(a,b)=>`PM2.5 <span style="text-transform:none">(µg/m³)</span> — selected window ${a}–${b} highlighted`,
     sensor_filter:"Room 19 (with filter)",
     sensor_ref:"Room without filter",
     th_sensor:"Sensor", th_avg:"Avg", th_median:"Median", th_min:"Min", th_max:"Max", th_n:"n",
@@ -246,14 +288,14 @@ const I18N={
   },
   es:{
     locale:"es",
-    docTitle:"Calidad del aire (PM2.5) — PurpleAir",
-    h1:"Calidad del aire — PM2.5",
-    subtitle:"Aula 19 con filtro Sqair vs aula sin filtro · sensores PurpleAir",
+    docTitle:"Aire Escolar Bogotá",
+    h1:"Aire Escolar Bogotá",
+    subtitle:"Monitoreo de calidad del aire en colegios públicos de Bogotá",
     back:"← Panel",
-    intro:`Calidad del aire (PM2.5): <b style="color:#3b6d11">Aula 19 con filtro Sqair</b> vs <b style="color:#e8830c">Aula sin filtro</b> (referencia). Mové los sliders para explorar cualquier ventana horaria.`,
+    intro:`Calidad del aire (PM2.5): <b style="color:var(--sage)">Aula 19 con filtro Sqair</b> vs <b style="color:var(--terracotta)">Aula sin filtro</b> (referencia). Mové los sliders para explorar cualquier ventana horaria.`,
     dateFrom:"Desde (fecha)", dateTo:"Hasta (fecha)", refresh:"Actualizar",
     timeFrom:"Desde (hora)", timeTo:"Hasta (hora)",
-    chartTitle:(a,b)=>`PM2.5 (µg/m³) — ventana ${a}–${b} resaltada`,
+    chartTitle:(a,b)=>`PM2.5 <span style="text-transform:none">(µg/m³)</span> — ventana ${a}–${b} resaltada`,
     sensor_filter:"Aula 19 (con filtro)",
     sensor_ref:"Aula sin filtro",
     th_sensor:"Sensor", th_avg:"Prom", th_median:"Mediana", th_min:"Mín", th_max:"Máx", th_n:"n",
@@ -303,9 +345,11 @@ const T=()=>I18N[LANG];
 
 const AIRE_FILTER=308614, AIRE_REF=308572;   // sensores: con filtro (Aula 19) / sin filtro
 const AIRE_SENSORS=[
-  {id:AIRE_FILTER,key:"sensor_filter",color:"#3b6d11"},
-  {id:AIRE_REF,key:"sensor_ref",color:"#e8830c"},
+  {id:AIRE_FILTER,key:"sensor_filter",cvar:"--sage"},        // con filtro — verde salvia
+  {id:AIRE_REF,key:"sensor_ref",cvar:"--terracotta"},        // sin filtro — terracota
 ];
+// Resuelve el color de marca del sensor al hex actual (respeta luz/oscuro).
+const sColor=s=>getComputedStyle(document.documentElement).getPropertyValue(s.cvar).trim();
 const sLabel=s=>T()[s.key];
 const AIRE_MAX_GAP_MS=60*60*1000;                 // corta la línea si hay un hueco > 1h (sin puentes falsos)
 const _pad=n=>String(n).padStart(2,"0");
@@ -392,7 +436,7 @@ function aireStatsTable(rows){
   });
   const w=by.find(s=>s.id===AIRE_FILTER),o=by.find(s=>s.id===AIRE_REF);
   const red=(w&&o&&w.mean!=null&&o.mean!=null&&o.mean>0)?(o.mean-w.mean)/o.mean*100:null;
-  const row=s=>`<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${s.color};margin-right:6px;vertical-align:middle;"></span>${sLabel(s)}</td>
+  const row=s=>`<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${sColor(s)};margin-right:6px;vertical-align:middle;"></span>${sLabel(s)}</td>
     <td class="num" style="color:${pmColor(s.mean)};font-weight:500;">${af1(s.mean)}</td><td class="num">${af1(s.median)}</td><td class="num">${af1(s.min)}</td><td class="num">${af1(s.max)}</td><td class="num">${s.n}</td></tr>`;
   const diff=(red==null)?`<tr><td colspan="6" style="color:var(--hint)">${L.noDiff}</td></tr>`:
     `<tr><td><b>${L.diff}</b></td><td class="num" colspan="5"><b style="color:${red>0?'var(--green-mid)':'var(--red-mid)'}">${af1(o.mean-w.mean)} µg/m³ (${(red>0?"−":"+")+Math.abs(red).toFixed(1)}%)</b></td></tr>`;
@@ -539,7 +583,7 @@ function renderAire(){
   const winFrom=+document.getElementById("winFrom").value, winTo=+document.getElementById("winTo").value;
   document.getElementById("winFromVal").textContent=hhmm(winFrom);
   document.getElementById("winToVal").textContent=hhmm(winTo);
-  document.getElementById("secChart").textContent=T().chartTitle(hhmm(winFrom),hhmm(winTo));
+  document.getElementById("secChart").innerHTML=T().chartTitle(hhmm(winFrom),hhmm(winTo));
   document.getElementById("aireStatus").textContent=T().status(_rows.length,_dates.length);
 
   const errEl=document.getElementById("aireErr");errEl.innerHTML="";
@@ -552,10 +596,10 @@ function renderAire(){
   }
 
   // Serie completa por sensor (cada punto con minutos del día para el resaltado).
-  const series=AIRE_SENSORS.map(s=>({color:s.color,
+  const series=AIRE_SENSORS.map(s=>({color:sColor(s),
     points:_rows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25,m:r.tp.minutes}))}));
   aireChart(series,winFrom,winTo);
-  document.getElementById("aireLeg").innerHTML=AIRE_SENSORS.map(s=>`<span class="dot" style="background:${s.color}"></span>${sLabel(s)}`).join("");
+  document.getElementById("aireLeg").innerHTML=AIRE_SENSORS.map(s=>`<span class="dot" style="background:${sColor(s)}"></span>${sLabel(s)}`).join("");
 
   // Stats sólo de la ventana seleccionada.
   const winRows=_rows.filter(r=>inWindow(r.tp.minutes,winFrom,winTo));

@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      SHELLY_SERVER:   ${{ secrets.SHELLY_SERVER }}
+      SHELLY_AUTH_KEY: ${{ secrets.SHELLY_AUTH_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -20,8 +23,6 @@ jobs:
 
       - name: Run Shelly collector
         env:
-          SHELLY_SERVER:   ${{ secrets.SHELLY_SERVER }}
-          SHELLY_AUTH_KEY: ${{ secrets.SHELLY_AUTH_KEY }}
           TIMEZONE:        America/Bogota
           SCHOOL_START:    "07:00"
           SCHOOL_END:      "16:00"
