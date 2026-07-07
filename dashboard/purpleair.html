@@ -7,6 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    /* Tema manual (default light, NO prefers-color-scheme). Se aplica antes de pintar para evitar flash. */
+    (function(){var t=localStorage.getItem("aire-escolar-theme");document.documentElement.setAttribute("data-theme",t==="dark"?"dark":"light");})();
+  </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
@@ -33,8 +37,8 @@
       --blue:#7A6326;--blue-bg:#F0E9D8;--blue-mid:#9B7B3A;           /* ochre — solo monitores / enlaces */
       --r:5px;
     }
-    @media(prefers-color-scheme:dark){
-     :root{
+    /* Dark mode MANUAL vía [data-theme="dark"] en <html> (toggle + localStorage), no prefers-color-scheme. */
+    :root[data-theme="dark"]{
       --maroon:#D98880;--ochre:#D4AF37;--sage:#93A87E;--terracotta:#CB8560;
       --bg:#1A1714;--surface:#241F1B;--border:#574F3E;--text:#F2EBDE;--muted:#9C9284;--hint:#8A8072;
       --green:#93A87E;--green-bg:#2A3322;--green-mid:#7E9A5E;
@@ -42,15 +46,13 @@
       --orange:#CB8560;--orange-bg:#3E2A1B;--orange-mid:#C57A4C;
       --red:#E0A29B;--red-bg:#3E1E1B;--red-mid:#D06E6E;
       --blue:#D4AF37;--blue-bg:#3A3115;--blue-mid:#C2A05A;
-     }
-     /* Contraste dark: números grandes y de tabla en claro (los inline pmColor
-        semánticos de AVG/PM se mantienen: son legibles y codifican la banda AQI). */
-     .ros-kpi .k-val{color:#F0F0F0 !important;}
-     .alert-table td{color:#F0F0F0;}
-     .alert-table td.num{color:#F0F0F0;}
-     /* faint line (serie completa) un poco más visible sobre fondo oscuro */
-     .aire-line svg path[stroke-opacity="0.2"]{stroke-opacity:.34;}
     }
+    /* Contraste dark: números grandes y de tabla en claro (los inline pmColor
+       semánticos de AVG/PM se mantienen: son legibles y codifican la banda AQI). */
+    [data-theme="dark"] .ros-kpi .k-val{color:#F0F0F0 !important;}
+    [data-theme="dark"] .alert-table td{color:#F0F0F0;}
+    [data-theme="dark"] .alert-table td.num{color:#F0F0F0;}
+    [data-theme="dark"] .aire-line svg path[stroke-opacity="0.2"]{stroke-opacity:.34;}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:var(--font-sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.55;min-height:100vh;display:flex;flex-direction:column;}
     .topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 28px 16px;border-bottom:1px solid var(--border);background:var(--surface);}
@@ -63,6 +65,8 @@
     .lang-toggle button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:500;padding:2px 3px;font-family:inherit;transition:color .12s;}
     .lang-toggle button:hover{color:var(--maroon);}
     .lang-toggle button.active{color:var(--maroon);text-decoration:underline;text-underline-offset:3px;}
+    .theme-toggle{background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;border-radius:6px;transition:background .12s;}
+    .theme-toggle:hover{background:var(--blue-bg);}
     .wrap{padding:28px 28px;display:flex;flex-direction:column;gap:26px;max-width:1180px;margin:0 auto;width:100%;}
     .section-title{font-family:var(--font-sans);font-size:10.5px;font-weight:600;color:var(--ochre);text-transform:uppercase;letter-spacing:.11em;margin-bottom:12px;}
     .chart-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;}
@@ -172,6 +176,28 @@
     .site-footer{margin-top:auto;padding:18px 28px;border-top:1px solid var(--border);background:var(--surface);
       font-family:var(--font-serif);font-size:13px;color:var(--muted);text-align:center;letter-spacing:.01em;}
     .site-footer b{color:var(--maroon);font-weight:500;}
+
+    /* ---- Impresión / PDF (solo Tab 1 Experiment): blanco, tinta oscura, bordes grises visibles ---- */
+    @media print{
+      @page{margin:1.4cm;}
+      *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+      .tabs,.topbar-right,#panel-experimento .aire-controls,#panel-explorer,.site-footer,#aireErr{display:none !important;}
+      body{background:#fff !important;color:#2D1B1B !important;font-size:15px !important;}
+      .topbar{background:#fff !important;border-bottom:1px solid #666 !important;padding:6px 0 10px !important;}
+      .topbar h1{color:#2D1B1B !important;}
+      .topbar p{color:#333 !important;font-size:14px !important;}
+      #panel-experimento .section-title{color:#333 !important;font-size:14px !important;}
+      #panel-experimento #introText{color:#333 !important;}
+      #panel-experimento .chart-box{background:#fff !important;border:1px solid #666 !important;box-shadow:none !important;}
+      #panel-experimento .aire-line svg{background:#fff !important;}
+      #panel-experimento .alert-table{background:#fff !important;border:1px solid #666 !important;}
+      #panel-experimento .alert-table th{background:#fff !important;color:#333 !important;font-size:14px !important;border-bottom:1px solid #666 !important;}
+      #panel-experimento .alert-table td{color:#2D1B1B !important;font-size:15px !important;border-bottom:1px solid #666 !important;}
+      #panel-experimento .alert-table td.num{font-family:var(--font-serif) !important;color:#2D1B1B !important;font-size:16px !important;}
+      #panel-experimento #aireSig{color:#333 !important;font-size:15px !important;}
+      #panel-experimento #aireSig b{color:#2D1B1B !important;font-size:18px !important;}
+      #panel-experimento #aireMethod{color:#333 !important;}
+    }
   </style>
 </head>
 <body>
@@ -184,6 +210,7 @@
     <div class="lang-toggle">
       <button id="langEn" onclick="setLang('en')">EN</button><span>|</span><button id="langEs" onclick="setLang('es')">ES</button>
     </div>
+    <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark"></button>
     <a href="./" id="backLink"></a>
   </div>
 </div>
@@ -201,6 +228,7 @@
   <div class="aire-controls">
     <label><span id="lblDateFrom"></span> <input type="date" id="aireFrom" class="map-filter" onchange="loadAire()"></label>
     <label><span id="lblDateTo"></span> <input type="date" id="aireTo" class="map-filter" onchange="loadAire()"></label>
+    <label class="ex-check"><input type="checkbox" id="aireWeekdays" onchange="onSlide()"> <span id="lblWeekdays"></span></label>
     <button class="map-filter aire-btn" id="btnRefresh" onclick="loadAire()"></button>
   </div>
 
@@ -306,7 +334,7 @@ const I18N={
     subtitle:"Monitoring air quality in Bogotá public schools",
     back:"← Dashboard",
     intro:`Air quality (PM2.5): <b style="color:var(--sage)">Room 19 with Sqair filter</b> vs <b style="color:var(--terracotta)">room without filter</b> (reference). Drag the sliders to explore any time window.`,
-    dateFrom:"From date", dateTo:"To date", refresh:"Refresh",
+    dateFrom:"From date", dateTo:"To date", refresh:"Refresh", weekdays:"Weekdays only",
     timeFrom:"From time", timeTo:"To time",
     chartTitle:(a,b)=>`PM2.5 <span style="text-transform:none">(µg/m³)</span> — selected window ${a}–${b} highlighted`,
     sensor_filter:"Room 19 (with filter)",
@@ -319,7 +347,7 @@ const I18N={
     pairs:"pairs",
     eff:["negligible","small","medium","large"],
     canonTitle:"Significance by canonical window (precomputed)",
-    th_window:"Window", th_npairs:"n pairs", th_sig:"Result", sigShort:"p<0.05", nsShort:"ns",
+    th_window:"Window", th_npairs:"n pairs", th_sig:"Result", th_avgdiff:"Avg difference", sigShort:"p<0.05", nsShort:"ns",
     win_school:"School (Mon–Fri 6:30–15:00)", win_extended:"Extended (Mon–Fri 6:30–17:00)", win_all:"24 hours", win_outside:"Outside (17:00–6:30)",
     statsErr:`stats file not found — run <code>collectors/purpleair_stats.py</code> and push`,
     methodNote:"Paired t-test (filter − reference) pairing by timestamp; pairing controls for day-of-week and hour-of-day. Observational: two different rooms, so room differences beyond the filter are confounded.",
@@ -374,7 +402,7 @@ const I18N={
     subtitle:"Monitoreo de calidad del aire en colegios públicos de Bogotá",
     back:"← Panel",
     intro:`Calidad del aire (PM2.5): <b style="color:var(--sage)">Aula 19 con filtro Sqair</b> vs <b style="color:var(--terracotta)">Aula sin filtro</b> (referencia). Mové los sliders para explorar cualquier ventana horaria.`,
-    dateFrom:"Desde (fecha)", dateTo:"Hasta (fecha)", refresh:"Actualizar",
+    dateFrom:"Desde (fecha)", dateTo:"Hasta (fecha)", refresh:"Actualizar", weekdays:"Solo días hábiles",
     timeFrom:"Desde (hora)", timeTo:"Hasta (hora)",
     chartTitle:(a,b)=>`PM2.5 <span style="text-transform:none">(µg/m³)</span> — ventana ${a}–${b} resaltada`,
     sensor_filter:"Aula 19 (con filtro)",
@@ -387,7 +415,7 @@ const I18N={
     pairs:"pares",
     eff:["insignificante","pequeño","mediano","grande"],
     canonTitle:"Significancia por ventana canónica (precalculado)",
-    th_window:"Ventana", th_npairs:"n pares", th_sig:"Resultado", sigShort:"p<0.05", nsShort:"ns",
+    th_window:"Ventana", th_npairs:"n pares", th_sig:"Resultado", th_avgdiff:"Diferencia prom.", sigShort:"p<0.05", nsShort:"ns",
     win_school:"Escolar (L–V 6:30–15:00)", win_extended:"Extendido (L–V 6:30–17:00)", win_all:"24 horas", win_outside:"Fuera (17:00–6:30)",
     statsErr:`archivo de stats no encontrado — corré <code>collectors/purpleair_stats.py</code> y hacé push`,
     methodNote:"Paired t-test (filtro − referencia) pareado por timestamp; el pareo controla por día de la semana y hora del día. Observacional: son dos aulas distintas, así que diferencias entre cuartos más allá del filtro quedan confundidas.",
@@ -595,11 +623,14 @@ function renderCanon(){
   const order=[["school_hours",L.win_school],["extended_hours",L.win_extended],["all_hours",L.win_all],["outside_hours",L.win_outside]];
   const body=order.map(([k,lab])=>{
     const e=_stats[k];
-    if(!e||e.t_stat==null)return `<tr><td>${lab}</td><td class="num" colspan="5" style="color:var(--hint)">${L.noDiff}</td></tr>`;
-    return `<tr><td>${lab}</td><td class="num">${e.t_stat.toFixed(2)}</td><td class="num">${ppval(e.p_value)}</td><td class="num">${e.cohens_d.toFixed(2)}</td><td class="num">${e.n}</td>`+
+    if(!e||e.t_stat==null)return `<tr><td>${lab}</td><td class="num" colspan="6" style="color:var(--hint)">${L.noDiff}</td></tr>`;
+    // AVG DIFFERENCE = sin filtro − con filtro = −mean_diff (mean_diff en el JSON es filtro − referencia).
+    const avgDiff=(e.mean_diff!=null)?(-e.mean_diff).toFixed(2):"—";
+    return `<tr><td>${lab}</td><td class="num">${e.t_stat.toFixed(2)}</td><td class="num">${ppval(e.p_value)}</td><td class="num">${e.cohens_d.toFixed(2)}</td>`+
+      `<td class="num">${avgDiff}</td><td class="num">${e.n}</td>`+
       `<td>${e.significant?`<span style="color:var(--green-mid);font-weight:600;">${L.sigShort}</span>`:`<span style="color:var(--muted)">${L.nsShort}</span>`}</td></tr>`;
   }).join("");
-  el.innerHTML=`<thead><tr><th>${L.th_window}</th><th class="num">t</th><th class="num">p</th><th class="num">Cohen's d</th><th class="num">${L.th_npairs}</th><th>${L.th_sig}</th></tr></thead><tbody>${body}</tbody>`;
+  el.innerHTML=`<thead><tr><th>${L.th_window}</th><th class="num">t</th><th class="num">p</th><th class="num">Cohen's d</th><th class="num">${L.th_avgdiff}</th><th class="num">${L.th_npairs}</th><th>${L.th_sig}</th></tr></thead><tbody>${body}</tbody>`;
 }
 
 // ---- textos estáticos según idioma ----
@@ -616,6 +647,7 @@ function applyStaticI18n(){
   document.getElementById("btnRefresh").textContent=L.refresh;
   document.getElementById("lblTimeFrom").textContent=L.timeFrom;
   document.getElementById("lblTimeTo").textContent=L.timeTo;
+  document.getElementById("lblWeekdays").textContent=L.weekdays;
   document.getElementById("langEn").classList.toggle("active",LANG==="en");
   document.getElementById("langEs").classList.toggle("active",LANG==="es");
   // ---- tabs + Explorer (estáticos) ----
@@ -644,6 +676,22 @@ function setLang(l){
   applyStaticI18n();
   renderAire();   // re-renderiza sin volver a descargar
   if(_exLoaded)exRenderAll();   // re-render Explorer en el nuevo idioma
+}
+
+// ===================== DARK MODE MANUAL (toggle + localStorage, default light) =====================
+function currentTheme(){ return document.documentElement.getAttribute("data-theme")==="dark"?"dark":"light"; }
+function applyTheme(t){
+  t = (t==="dark") ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t);
+  localStorage.setItem("aire-escolar-theme", t);
+  const btn=document.getElementById("themeToggle");
+  if(btn) btn.textContent = (t==="dark") ? "🌙" : "☀️";   // ícono = tema actual (solo emoji, sin texto)
+}
+function toggleTheme(){
+  applyTheme(currentTheme()==="dark" ? "light" : "dark");
+  // re-render: los colores inline (líneas del gráfico vía sColor, pmColor) se rehornean por render
+  renderAire();
+  if(_exLoaded)exRenderAll();
 }
 
 // ===================== TABS (lazy-load por pestaña) =====================
@@ -683,7 +731,9 @@ function renderAire(){
   document.getElementById("winFromVal").textContent=hhmm(winFrom);
   document.getElementById("winToVal").textContent=hhmm(winTo);
   document.getElementById("secChart").innerHTML=T().chartTitle(hhmm(winFrom),hhmm(winTo));
-  document.getElementById("aireStatus").textContent=T().status(_rows.length,_dates.length);
+  const wd=document.getElementById("aireWeekdays").checked;
+  const rows=wd?_rows.filter(r=>r.tp.dow>=1&&r.tp.dow<=5):_rows;   // "Weekdays only": excluye sáb(6)/dom(0)
+  document.getElementById("aireStatus").textContent=T().status(rows.length,_dates.length);
 
   const errEl=document.getElementById("aireErr");errEl.innerHTML="";
   renderCanon();   // tabla canónica desde el JSON (independiente de los sliders)
@@ -696,12 +746,12 @@ function renderAire(){
 
   // Serie completa por sensor (cada punto con minutos del día para el resaltado).
   const series=AIRE_SENSORS.map(s=>({color:sColor(s),
-    points:_rows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25,m:r.tp.minutes}))}));
+    points:rows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25,m:r.tp.minutes}))}));
   aireChart(series,winFrom,winTo);
   document.getElementById("aireLeg").innerHTML=AIRE_SENSORS.map(s=>`<span class="dot" style="background:${sColor(s)}"></span>${sLabel(s)}`).join("");
 
   // Stats sólo de la ventana seleccionada.
-  const winRows=_rows.filter(r=>inWindow(r.tp.minutes,winFrom,winTo));
+  const winRows=rows.filter(r=>inWindow(r.tp.minutes,winFrom,winTo));
   document.getElementById("aireStats").innerHTML=aireStatsTable(winRows);
 
   // Significancia (paired t-test en vivo) de la ventana seleccionada.
@@ -1200,6 +1250,7 @@ function exResetFilters(){
 }
 
 applyStaticI18n();
+applyTheme(currentTheme());   // sincroniza el ícono del toggle con el tema ya aplicado en <head>
 loadStatsJson();
 loadAire();
 setInterval(loadAire,60000);   // refresca cada minuto
