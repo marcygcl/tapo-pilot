@@ -18,21 +18,15 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync
       - run: uv run python collectors/shelly/collect.py --once
-      - name: Commit and push (with retry)
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/shelly/
           if ! git diff --cached --quiet; then
             git commit -m "data(shelly): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            for attempt in 1 2 3; do
-              if git pull --rebase --autostash && git push; then
-                exit 0
-              fi
-              [ $attempt -lt 3 ] && sleep 5
-            done
-            echo "Push failed after 3 retries"
-            exit 1
+            git pull --rebase --autostash
+            git push
           fi
 
   collect-emporia:
@@ -47,21 +41,15 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync
       - run: uv run python collectors/emporia/collect.py --once
-      - name: Commit and push (with retry)
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/emporia/
           if ! git diff --cached --quiet; then
             git commit -m "data(emporia): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            for attempt in 1 2 3; do
-              if git pull --rebase --autostash && git push; then
-                exit 0
-              fi
-              [ $attempt -lt 3 ] && sleep 5
-            done
-            echo "Push failed after 3 retries"
-            exit 1
+            git pull --rebase --autostash
+            git push
           fi
 
   collect-purpleair:
@@ -75,21 +63,15 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync
       - run: uv run python collectors/purpleair.py --once
-      - name: Commit and push (with retry)
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/purpleair/
           if ! git diff --cached --quiet; then
             git commit -m "data(purpleair): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            for attempt in 1 2 3; do
-              if git pull --rebase --autostash && git push; then
-                exit 0
-              fi
-              [ $attempt -lt 3 ] && sleep 5
-            done
-            echo "Push failed after 3 retries"
-            exit 1
+            git pull --rebase --autostash
+            git push
           fi
 
   collect-aire-ciudadano:
@@ -101,19 +83,13 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync
       - run: uv run python collectors/aire_ciudadano.py --once
-      - name: Commit and push (with retry)
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add energy_logs/aire_ciudadano/
           if ! git diff --cached --quiet; then
             git commit -m "data(aire_ciudadano): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            for attempt in 1 2 3; do
-              if git pull --rebase --autostash && git push; then
-                exit 0
-              fi
-              [ $attempt -lt 3 ] && sleep 5
-            done
-            echo "Push failed after 3 retries"
-            exit 1
+            git pull --rebase --autostash
+            git push
           fi
