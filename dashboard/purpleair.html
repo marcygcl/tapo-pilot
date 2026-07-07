@@ -35,6 +35,7 @@
       --orange:#8C4A28;--orange-bg:#F1E2D6;--orange-mid:#A0522D;      /* terracotta — sin filtro / dañino(sens) */
       --red:#800000;--red-bg:#F3E1DD;--red-mid:#8E2B2B;               /* maroon — dañino / negativo */
       --blue:#7A6326;--blue-bg:#F0E9D8;--blue-mid:#9B7B3A;           /* ochre — solo monitores / enlaces */
+      --ink:#2D1B1B;--label:#333333;   /* Tab 1: números granate oscuro / labels gris (theme-aware) */
       --r:5px;
     }
     /* Dark mode MANUAL vía [data-theme="dark"] en <html> (toggle + localStorage), no prefers-color-scheme. */
@@ -46,6 +47,7 @@
       --orange:#CB8560;--orange-bg:#3E2A1B;--orange-mid:#C57A4C;
       --red:#E0A29B;--red-bg:#3E1E1B;--red-mid:#D06E6E;
       --blue:#D4AF37;--blue-bg:#3A3115;--blue-mid:#C2A05A;
+      --ink:#F0E8E4;--label:#AEA598;   /* Tab 1 en dark: números claros / labels gris claro (legibles) */
     }
     /* Contraste dark: números grandes y de tabla en claro (los inline pmColor
        semánticos de AVG/PM se mantienen: son legibles y codifican la banda AQI). */
@@ -179,12 +181,17 @@
 
     /* ---- Tab 1 Experiment: tipografía GRANDE on-screen (gráfico legible de lejos). Scoped → no toca Tab 2 ---- */
     #panel-experimento .aire-line svg{height:420px;}
-    #panel-experimento #secChart{font-size:22px;font-weight:700;}          /* título gráfico */
-    #panel-experimento .cmp-legend{font-size:18px;}                         /* leyenda de series */
-    #panel-experimento .cmp-legend .dot{width:13px;height:13px;}
+    /* Título gráfico: Crimson Pro, granate, 20px bold (theme-aware vía --ink) */
+    #panel-experimento #secChart{font-family:var(--font-serif);font-size:20px;font-weight:700;color:var(--ink);text-transform:none;letter-spacing:0;}
+    /* Leyenda de series: IBM Plex Sans, 16px, gris */
+    #panel-experimento .cmp-legend{font-family:var(--font-sans);font-size:16px;color:var(--label);}
+    #panel-experimento .cmp-legend .dot{width:12px;height:12px;}
     #panel-experimento .aire-controls{font-size:15px;}                      /* labels de controles */
-    #panel-experimento .alert-table th{font-size:16px;}                     /* headers tabla */
-    #panel-experimento .alert-table td.num{font-size:18px;}                 /* números tabla */
+    /* Tabla stats: UNA sola familia (IBM Plex Sans). headers ocre / números granate / nombres gris */
+    #panel-experimento .alert-table th{font-family:var(--font-sans);font-size:16px;font-weight:500;color:var(--ochre);}
+    #panel-experimento .alert-table td{font-family:var(--font-sans);font-size:16px;font-weight:500;color:var(--label);}
+    #panel-experimento .alert-table td.num{font-family:var(--font-sans);font-size:18px;font-weight:400;color:var(--ink);}
+    #panel-experimento .alert-table td b{color:var(--ink);font-weight:600;}   /* "Difference" */
 
     /* ---- Impresión / PDF (solo Tab 1 Experiment): blanco, tinta oscura, bordes grises visibles ---- */
     @media print{
@@ -530,30 +537,34 @@ const fetchAir=date=>new Promise(res=>{
 // Cada punto lleva m=minutos del día. Corta segmentos en huecos > 1h y en los bordes de ventana.
 function aireChart(series,winFrom,winTo){
   const el=document.getElementById("aireChart");el.innerHTML="";
-  // Geometría ampliada: viewBox alto (420) 1:1 con el height CSS de Tab 1 y márgenes grandes
-  // para números de eje BIEN GRANDES sin que se corten.
-  const W=1040,H=420,PL=78,PR=20,PT=24,PB=54;
+  // Geometría ampliada + tipografía UNIFORME y theme-aware: números Crimson Pro granate (--ink),
+  // labels IBM Plex Sans gris (--label). Márgenes grandes; timestamps rotados 45° para no solaparse.
+  const W=1040,H=420,PL=78,PR=20,PT=24,PB=80;
+  const C_INK=cssVar("--ink"), C_LBL=cssVar("--label");
+  const F_SERIF="'Crimson Pro',Georgia,serif", F_SANS="'IBM Plex Sans',sans-serif";
   const all=series.flatMap(s=>s.points);
-  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="22">${T().noChartData}</text></svg>`;return;}
+  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" font-family="${F_SANS}" font-size="20" fill="${C_LBL}">${T().noChartData}</text></svg>`;return;}
   const xs=all.map(p=>p.x),ys=all.map(p=>p.y);
   let xmin=Math.min(...xs),xmax=Math.max(...xs),ymax=Math.max(...ys,1)*1.12;
   if(xmax===xmin)xmax=xmin+1;
   const X=x=>PL+(x-xmin)/(xmax-xmin)*(W-PL-PR),Y=y=>H-PB-(y/ymax)*(H-PB-PT);
 
   const ticks=[0,ymax/2,ymax];
-  // Números del eje Y: BIEN GRANDES (24px).
+  // Números eje Y: Crimson Pro, granate, 20px.
   const grid=ticks.map(t=>`<line x1="${PL}" y1="${Y(t).toFixed(1)}" x2="${W-PR}" y2="${Y(t).toFixed(1)}" stroke="rgba(128,128,128,.18)"/>
-    <text x="${PL-12}" y="${(Y(t)+8).toFixed(1)}" text-anchor="end" font-size="24" fill="#999">${t.toFixed(0)}</text>`).join("");
-  // Etiqueta del eje Y (rotada), 18px.
+    <text x="${PL-12}" y="${(Y(t)+7).toFixed(1)}" text-anchor="end" font-family="${F_SERIF}" font-size="20" fill="${C_INK}">${t.toFixed(0)}</text>`).join("");
+  // Etiqueta eje Y: IBM Plex Sans, gris, 16px (rotada).
   const _yc=(PT+(H-PB))/2;
-  const ylabel=`<text x="22" y="${_yc.toFixed(1)}" transform="rotate(-90 22 ${_yc.toFixed(1)})" text-anchor="middle" font-size="18" fill="#999">PM2.5 (µg/m³)</text>`;
-  // Etiquetas del eje X desde el tiempo REAL (rt) de puntos ancla — así el eje puede estar
-  // comprimido (weekdays-only: sin hueco de fin de semana) y las fechas siguen siendo correctas.
-  const xlab=ms=>new Date(ms).toLocaleString(T().locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  const ylabel=`<text x="20" y="${_yc.toFixed(1)}" transform="rotate(-90 20 ${_yc.toFixed(1)})" text-anchor="middle" font-family="${F_SANS}" font-size="16" fill="${C_LBL}">PM2.5 (µg/m³)</text>`;
+  // Etiquetas eje X: fechas del tiempo REAL (rt), ~5 rótulos compactos, IBM Plex Sans 14px, rotados 45°.
+  const xlab=ms=>new Date(ms).toLocaleString(T().locale,{timeZone:TZ,month:'short',day:'numeric',hour:'2-digit'});
   const rtOf=p=>p.rt!=null?p.rt:p.x;
   const _sorted=[...all].sort((a,b)=>a.x-b.x);
-  const anchors=_sorted.length>=3?[_sorted[0],_sorted[_sorted.length>>1],_sorted[_sorted.length-1]]:_sorted;
-  const xt=anchors.map((p,i,arr)=>`<text x="${X(p.x).toFixed(1)}" y="${H-18}" text-anchor="${i===0?'start':i===arr.length-1?'end':'middle'}" font-size="18" fill="#999">${xlab(rtOf(p))}</text>`).join("");
+  const N=Math.min(5,_sorted.length),_idx=[];
+  for(let i=0;i<N;i++)_idx.push(Math.round(i*(_sorted.length-1)/Math.max(1,N-1)));
+  const _uniq=[...new Set(_idx)].map(i=>_sorted[i]);
+  const _ay=H-PB+16;
+  const xt=_uniq.map(p=>{const x0=X(p.x).toFixed(1);return `<text x="${x0}" y="${_ay}" transform="rotate(-45 ${x0} ${_ay})" text-anchor="end" font-family="${F_SANS}" font-size="14" fill="${C_LBL}">${xlab(rtOf(p))}</text>`;}).join("");
 
   // Línea tenue: toda la serie (corta sólo en huecos grandes).
   const faint=series.map(s=>{if(!s.points.length)return"";
@@ -583,10 +594,11 @@ function aireStatsTable(rows){
   });
   const w=by.find(s=>s.id===AIRE_FILTER),o=by.find(s=>s.id===AIRE_REF);
   const red=(w&&o&&w.mean!=null&&o.mean!=null&&o.mean>0)?(o.mean-w.mean)/o.mean*100:null;
-  const row=s=>`<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${sColor(s)};margin-right:6px;vertical-align:middle;"></span>${sLabel(s)}</td>
-    <td class="num" style="color:${pmColor(s.mean)};font-weight:500;">${af1(s.mean)}</td><td class="num">${af1(s.median)}</td><td class="num">${af1(s.min)}</td><td class="num">${af1(s.max)}</td><td class="num">${s.n}</td></tr>`;
+  // Colores por CSS (una sola familia + --ink/--ochre/--label). El punto de color mantiene la serie.
+  const row=s=>`<tr><td><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${sColor(s)};margin-right:7px;vertical-align:middle;"></span>${sLabel(s)}</td>
+    <td class="num">${af1(s.mean)}</td><td class="num">${af1(s.median)}</td><td class="num">${af1(s.min)}</td><td class="num">${af1(s.max)}</td><td class="num">${s.n}</td></tr>`;
   const diff=(red==null)?`<tr><td colspan="6" style="color:var(--hint)">${L.noDiff}</td></tr>`:
-    `<tr><td><b>${L.diff}</b></td><td class="num" colspan="5"><b style="color:${red>0?'var(--green-mid)':'var(--red-mid)'}">${af1(o.mean-w.mean)} µg/m³ (${(red>0?"−":"+")+Math.abs(red).toFixed(1)}%)</b></td></tr>`;
+    `<tr><td><b>${L.diff}</b></td><td class="num" colspan="5"><b>${af1(o.mean-w.mean)} µg/m³ (${(red>0?"−":"+")+Math.abs(red).toFixed(1)}%)</b></td></tr>`;
   return `<thead><tr><th>${L.th_sensor}</th><th class="num">${L.th_avg}</th><th class="num">${L.th_median}</th><th class="num">${L.th_min}</th><th class="num">${L.th_max}</th><th class="num">${L.th_n}</th></tr></thead><tbody>${by.map(row).join("")}${diff}</tbody>`;
 }
 
