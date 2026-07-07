@@ -247,6 +247,8 @@ def poll_once():
         f"  [green]{len(online)} online[/green] · "
         f"[dim]{offline} offline[/dim] · {len(rows)} definidas · guardadas en {log_path()}"
     )
+    online_count, total_in_config = len(online), len(rows)
+    print(f"Aire Ciudadano: {online_count} con PM2.5 válido / {total_in_config} en config")
     return rows
 
 
