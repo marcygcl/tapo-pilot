@@ -182,20 +182,23 @@
       @page{margin:1.4cm;}
       *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
       .tabs,.topbar-right,#panel-experimento .aire-controls,#panel-explorer,.site-footer,#aireErr{display:none !important;}
-      body{background:#fff !important;color:#2D1B1B !important;font-size:15px !important;}
+      body{background:#fff !important;color:#2D1B1B !important;font-size:16px !important;}
       .topbar{background:#fff !important;border-bottom:1px solid #666 !important;padding:6px 0 10px !important;}
-      .topbar h1{color:#2D1B1B !important;}
-      .topbar p{color:#333 !important;font-size:14px !important;}
-      #panel-experimento .section-title{color:#333 !important;font-size:14px !important;}
-      #panel-experimento #introText{color:#333 !important;}
+      .topbar h1{color:#2D1B1B !important;font-size:24px !important;}
+      .topbar p{color:#333 !important;font-size:15px !important;}
+      #panel-experimento .section-title{color:#333 !important;font-size:16px !important;}   /* títulos */
+      #panel-experimento #introText{color:#333 !important;font-size:15px !important;}
       #panel-experimento .chart-box{background:#fff !important;border:1px solid #666 !important;box-shadow:none !important;}
       #panel-experimento .aire-line svg{background:#fff !important;}
+      /* leyenda de series (Room 19 / Room without filter): 15px + bold */
+      #panel-experimento .cmp-legend{color:#333 !important;font-size:15px !important;font-weight:700 !important;}
       #panel-experimento .alert-table{background:#fff !important;border:1px solid #666 !important;}
-      #panel-experimento .alert-table th{background:#fff !important;color:#333 !important;font-size:14px !important;border-bottom:1px solid #666 !important;}
-      #panel-experimento .alert-table td{color:#2D1B1B !important;font-size:15px !important;border-bottom:1px solid #666 !important;}
-      #panel-experimento .alert-table td.num{font-family:var(--font-serif) !important;color:#2D1B1B !important;font-size:16px !important;}
-      #panel-experimento #aireSig{color:#333 !important;font-size:15px !important;}
-      #panel-experimento #aireSig b{color:#2D1B1B !important;font-size:18px !important;}
+      #panel-experimento .alert-table th{background:#fff !important;color:#333 !important;font-size:15px !important;border-bottom:1px solid #666 !important;}   /* labels */
+      #panel-experimento .alert-table td{color:#2D1B1B !important;font-size:16px !important;border-bottom:1px solid #666 !important;}
+      /* números grandes (Crimson Pro serif, granate oscuro): 24px */
+      #panel-experimento .alert-table td.num{font-family:var(--font-serif) !important;color:#2D1B1B !important;font-size:24px !important;font-weight:600 !important;}
+      #panel-experimento #aireSig{color:#333 !important;font-size:16px !important;}
+      #panel-experimento #aireSig b{font-family:var(--font-serif) !important;color:#2D1B1B !important;font-size:24px !important;}
       #panel-experimento #aireMethod{color:#333 !important;}
     }
   </style>
@@ -529,8 +532,13 @@ function aireChart(series,winFrom,winTo){
   const ticks=[0,ymax/2,ymax];
   const grid=ticks.map(t=>`<line x1="${PL}" y1="${Y(t).toFixed(1)}" x2="${W-PR}" y2="${Y(t).toFixed(1)}" stroke="rgba(128,128,128,.18)"/>
     <text x="${PL-4}" y="${(Y(t)+3).toFixed(1)}" text-anchor="end" font-size="10" fill="#999">${t.toFixed(0)}</text>`).join("");
+  // Etiquetas del eje X desde el tiempo REAL (rt) de puntos ancla — así el eje puede estar
+  // comprimido (weekdays-only: sin hueco de fin de semana) y las fechas siguen siendo correctas.
   const xlab=ms=>new Date(ms).toLocaleString(T().locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-  const xt=[xmin,(xmin+xmax)/2,xmax].map((x,i)=>`<text x="${X(x).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':i===2?'end':'middle'}" font-size="10" fill="#999">${xlab(x)}</text>`).join("");
+  const rtOf=p=>p.rt!=null?p.rt:p.x;
+  const _sorted=[...all].sort((a,b)=>a.x-b.x);
+  const anchors=_sorted.length>=3?[_sorted[0],_sorted[_sorted.length>>1],_sorted[_sorted.length-1]]:_sorted;
+  const xt=anchors.map((p,i,arr)=>`<text x="${X(p.x).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':i===arr.length-1?'end':'middle'}" font-size="10" fill="#999">${xlab(rtOf(p))}</text>`).join("");
 
   // Línea tenue: toda la serie (corta sólo en huecos grandes).
   const faint=series.map(s=>{if(!s.points.length)return"";
@@ -744,9 +752,20 @@ function renderAire(){
     aireChart([],winFrom,winTo);return;
   }
 
-  // Serie completa por sensor (cada punto con minutos del día para el resaltado).
+  // Serie completa por sensor. Cada punto lleva: x (coord de dibujo), rt (tiempo real p/etiquetas),
+  // m (minutos del día p/resaltado). Con "Weekdays only" el eje X se COMPRIME: cada día hábil ocupa
+  // un slot consecutivo (sáb/dom no ocupan espacio) → viernes y lunes quedan pegados.
+  const DAY_MS=1440*60000;
+  let cx=null;
+  if(wd){
+    const idx={}; let k=0;
+    for(const d of _dates){ const g=new Date(d+"T12:00:00").getDay(); if(g>=1&&g<=5){ idx[d]=k++; } }
+    const bogDate=t=>{ const b=new Date(t-5*3600000); return `${b.getUTCFullYear()}-${_pad(b.getUTCMonth()+1)}-${_pad(b.getUTCDate())}`; };
+    cx=(t,minutes)=>{ const slot=idx[bogDate(t)]; return (slot==null?0:slot)*DAY_MS + minutes*60000; };
+  }
   const series=AIRE_SENSORS.map(s=>({color:sColor(s),
-    points:rows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t).map(r=>({x:r.t,y:r.pm25,m:r.tp.minutes}))}));
+    points:rows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t)
+      .map(r=>({x:cx?cx(r.t,r.tp.minutes):r.t, rt:r.t, y:r.pm25, m:r.tp.minutes}))}));
   aireChart(series,winFrom,winTo);
   document.getElementById("aireLeg").innerHTML=AIRE_SENSORS.map(s=>`<span class="dot" style="background:${sColor(s)}"></span>${sLabel(s)}`).join("");
 
