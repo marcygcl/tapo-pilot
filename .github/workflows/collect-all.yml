@@ -25,8 +25,18 @@ jobs:
           git add energy_logs/shelly/
           if ! git diff --cached --quiet; then
             git commit -m "data(shelly): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            git pull --rebase --autostash
-            git push
+            # 4 jobs pushean en paralelo al mismo ref → carrera. Reintentar re-pulleando
+            # (el push rechazado es non-fast-forward: hace falta rebasar sobre lo recién
+            # pusheado por otro job, no solo reintentar el push). Jitter aleatorio para
+            # desincronizar los reintentos. Carpetas disjuntas ⇒ el rebase nunca conflictúa.
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 5 ] && sleep $((RANDOM % 10 + 5))
+            done
+            echo "Push failed after 5 retries"
+            exit 1
           fi
 
   collect-emporia:
@@ -48,8 +58,14 @@ jobs:
           git add energy_logs/emporia/
           if ! git diff --cached --quiet; then
             git commit -m "data(emporia): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            git pull --rebase --autostash
-            git push
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 5 ] && sleep $((RANDOM % 10 + 5))
+            done
+            echo "Push failed after 5 retries"
+            exit 1
           fi
 
   collect-purpleair:
@@ -70,8 +86,14 @@ jobs:
           git add energy_logs/purpleair/
           if ! git diff --cached --quiet; then
             git commit -m "data(purpleair): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            git pull --rebase --autostash
-            git push
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 5 ] && sleep $((RANDOM % 10 + 5))
+            done
+            echo "Push failed after 5 retries"
+            exit 1
           fi
 
   collect-aire-ciudadano:
@@ -90,6 +112,12 @@ jobs:
           git add energy_logs/aire_ciudadano/
           if ! git diff --cached --quiet; then
             git commit -m "data(aire_ciudadano): $(date -u +'%Y-%m-%d %H:%M') UTC"
-            git pull --rebase --autostash
-            git push
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase --autostash && git push; then
+                exit 0
+              fi
+              [ $attempt -lt 5 ] && sleep $((RANDOM % 10 + 5))
+            done
+            echo "Push failed after 5 retries"
+            exit 1
           fi
