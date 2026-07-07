@@ -177,6 +177,15 @@
       font-family:var(--font-serif);font-size:13px;color:var(--muted);text-align:center;letter-spacing:.01em;}
     .site-footer b{color:var(--maroon);font-weight:500;}
 
+    /* ---- Tab 1 Experiment: tipografía GRANDE on-screen (gráfico legible de lejos). Scoped → no toca Tab 2 ---- */
+    #panel-experimento .aire-line svg{height:420px;}
+    #panel-experimento #secChart{font-size:22px;font-weight:700;}          /* título gráfico */
+    #panel-experimento .cmp-legend{font-size:18px;}                         /* leyenda de series */
+    #panel-experimento .cmp-legend .dot{width:13px;height:13px;}
+    #panel-experimento .aire-controls{font-size:15px;}                      /* labels de controles */
+    #panel-experimento .alert-table th{font-size:16px;}                     /* headers tabla */
+    #panel-experimento .alert-table td.num{font-size:18px;}                 /* números tabla */
+
     /* ---- Impresión / PDF (solo Tab 1 Experiment): blanco, tinta oscura, bordes grises visibles ---- */
     @media print{
       @page{margin:1.4cm;}
@@ -521,24 +530,30 @@ const fetchAir=date=>new Promise(res=>{
 // Cada punto lleva m=minutos del día. Corta segmentos en huecos > 1h y en los bordes de ventana.
 function aireChart(series,winFrom,winTo){
   const el=document.getElementById("aireChart");el.innerHTML="";
-  const W=1040,H=340,PL=40,PR=14,PT=14,PB=28;
+  // Geometría ampliada: viewBox alto (420) 1:1 con el height CSS de Tab 1 y márgenes grandes
+  // para números de eje BIEN GRANDES sin que se corten.
+  const W=1040,H=420,PL=78,PR=20,PT=24,PB=54;
   const all=series.flatMap(s=>s.points);
-  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="14">${T().noChartData}</text></svg>`;return;}
+  if(!all.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="22">${T().noChartData}</text></svg>`;return;}
   const xs=all.map(p=>p.x),ys=all.map(p=>p.y);
   let xmin=Math.min(...xs),xmax=Math.max(...xs),ymax=Math.max(...ys,1)*1.12;
   if(xmax===xmin)xmax=xmin+1;
   const X=x=>PL+(x-xmin)/(xmax-xmin)*(W-PL-PR),Y=y=>H-PB-(y/ymax)*(H-PB-PT);
 
   const ticks=[0,ymax/2,ymax];
+  // Números del eje Y: BIEN GRANDES (24px).
   const grid=ticks.map(t=>`<line x1="${PL}" y1="${Y(t).toFixed(1)}" x2="${W-PR}" y2="${Y(t).toFixed(1)}" stroke="rgba(128,128,128,.18)"/>
-    <text x="${PL-4}" y="${(Y(t)+3).toFixed(1)}" text-anchor="end" font-size="10" fill="#999">${t.toFixed(0)}</text>`).join("");
+    <text x="${PL-12}" y="${(Y(t)+8).toFixed(1)}" text-anchor="end" font-size="24" fill="#999">${t.toFixed(0)}</text>`).join("");
+  // Etiqueta del eje Y (rotada), 18px.
+  const _yc=(PT+(H-PB))/2;
+  const ylabel=`<text x="22" y="${_yc.toFixed(1)}" transform="rotate(-90 22 ${_yc.toFixed(1)})" text-anchor="middle" font-size="18" fill="#999">PM2.5 (µg/m³)</text>`;
   // Etiquetas del eje X desde el tiempo REAL (rt) de puntos ancla — así el eje puede estar
   // comprimido (weekdays-only: sin hueco de fin de semana) y las fechas siguen siendo correctas.
   const xlab=ms=>new Date(ms).toLocaleString(T().locale,{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
   const rtOf=p=>p.rt!=null?p.rt:p.x;
   const _sorted=[...all].sort((a,b)=>a.x-b.x);
   const anchors=_sorted.length>=3?[_sorted[0],_sorted[_sorted.length>>1],_sorted[_sorted.length-1]]:_sorted;
-  const xt=anchors.map((p,i,arr)=>`<text x="${X(p.x).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':i===arr.length-1?'end':'middle'}" font-size="10" fill="#999">${xlab(rtOf(p))}</text>`).join("");
+  const xt=anchors.map((p,i,arr)=>`<text x="${X(p.x).toFixed(1)}" y="${H-18}" text-anchor="${i===0?'start':i===arr.length-1?'end':'middle'}" font-size="18" fill="#999">${xlab(rtOf(p))}</text>`).join("");
 
   // Línea tenue: toda la serie (corta sólo en huecos grandes).
   const faint=series.map(s=>{if(!s.points.length)return"";
@@ -556,7 +571,7 @@ function aireChart(series,winFrom,winTo){
     });
     return `<path d="${d.trim()}" fill="none" stroke="${s.color}" stroke-width="1.9" stroke-opacity="1"/>`;}).join("");
 
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${faint}${strong}${xt}</svg>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${ylabel}${faint}${strong}${xt}</svg>`;
 }
 
 // Tabla de stats para un subconjunto de filas (promedio/mediana/min/max/n + diferencia).
