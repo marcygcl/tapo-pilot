@@ -244,6 +244,10 @@
 <div class="wrap">
   <div style="font-size:12px;color:var(--muted);"><span id="introText"></span> <span id="aireStatus" style="color:var(--hint)"></span></div>
 
+  <div class="aire-controls" id="airePairRow" style="display:none;">
+    <label><span id="lblPair"></span> <select id="airePair" class="map-filter" onchange="setPair(this.value)"></select></label>
+  </div>
+
   <div class="aire-controls">
     <label><span id="lblDateFrom"></span> <input type="date" id="aireFrom" class="map-filter" onchange="loadAire()"></label>
     <label><span id="lblDateTo"></span> <input type="date" id="aireTo" class="map-filter" onchange="loadAire()"></label>
@@ -264,6 +268,8 @@
     <div class="cmp-legend" id="aireLeg"></div>
     <table class="alert-table" id="aireStats"></table>
     <div id="aireSig" style="margin-top:14px;font-size:12.5px;"></div>
+    <div class="section-title" id="secPerDevice" style="margin-top:20px;margin-bottom:8px;display:none;"></div>
+    <table class="alert-table" id="airePerDevice" style="display:none;"></table>
     <div class="section-title" id="secCanon" style="margin-top:20px;margin-bottom:8px;"></div>
     <table class="alert-table" id="aireCanon"></table>
     <div id="aireMethod" style="font-size:10.5px;color:var(--hint);margin-top:8px;"></div>
@@ -352,20 +358,28 @@ const I18N={
     h1:"Aire Escolar Bogotá",
     subtitle:"Monitoring air quality in Bogotá public schools",
     back:"← Dashboard",
-    intro:`Air quality (PM2.5): <b style="color:var(--sage)">Room 19 with Sqair filter</b> vs <b style="color:var(--terracotta)">room without filter</b> (reference). Drag the sliders to explore any time window.`,
+    intro:(f,r)=>`Air quality (PM2.5): <b style="color:var(--sage)">${f}</b> vs <b style="color:var(--terracotta)">${r}</b> (reference). Drag the sliders to explore any time window.`,
     dateFrom:"From date", dateTo:"To date", refresh:"Refresh", weekdays:"Weekdays only",
     timeFrom:"From time", timeTo:"To time",
+    pair:"Comparison",
     chartTitle:(a,b)=>`PM2.5 <span style="text-transform:none">(µg/m³)</span> — selected window ${a}–${b} highlighted`,
-    sensor_filter:"Room 19 (with filter)",
-    sensor_ref:"Room without filter",
+    // Etiquetas de sala: el modelo de purificador sale de device_history, nunca hardcodeado.
+    roomWithFilter:(room,dev)=>dev?`${room} (${dev})`:`${room} (with filter)`,
+    roomNoFilter:room=>`${room} (no filter)`,
     th_sensor:"Sensor", th_avg:"Avg", th_median:"Median", th_min:"Min", th_max:"Max", th_n:"n",
     diff:"Difference (without − with)",
     noDiff:"not enough data in this window",
     sigTitle:"Selected window — paired t-test (filter − reference, matched by timestamp)",
     significant:"Significant at p<0.05", notSignificant:"Not significant",
     pairs:"pairs",
+    // Stats por período de dispositivo (device_history del aula con filtro)
+    perDeviceTitle:"By filter device (selected window)",
+    th_period:"Period", th_device:"Filter device", devActive:"active", devTo:d=>`until ${d}`,
+    devNone:"no filter", mixedRow:"Whole range (mixed devices)", mixedWarn:"⚠ spans multiple devices",
+    cadr:c=>`CADR ${c} m³/h`,
     eff:["negligible","small","medium","large"],
     canonTitle:"Significance by canonical window (precomputed)",
+    canonOtherPair:"Precomputed windows are only available for the original pair — run collectors/purpleair_stats.py for this one.",
     th_window:"Window", th_npairs:"n pairs", th_sig:"Result", th_avgdiff:"Avg difference", sigShort:"p<0.05", nsShort:"ns",
     win_school:"School (Mon–Fri 6:30–15:00)", win_extended:"Extended (Mon–Fri 6:30–17:00)", win_all:"24 hours", win_outside:"Outside (17:00–6:30)",
     statsErr:`stats file not found — run <code>collectors/purpleair_stats.py</code> and push`,
@@ -399,7 +413,7 @@ const I18N={
     chart_school:`School — indoor vs outdoor PM2.5 <span style="text-transform:none">(µg/m³)</span>`,
     chart_aula:`Classroom — PM2.5 <span style="text-transform:none">(µg/m³)</span>`,
     series_int:"Indoor avg", series_ext:"Outdoor avg",
-    withFilter:"with Sqair filter", noFilter:"no filter",
+    withFilter:"with filter", withDevice:d=>`with ${d}`, noFilter:"no filter",
     dataFrom:d=>`Data available from ${d}`,
     exNoData:"no sensors match the current filters",
     exErr:`<div class="err">Could not load <code>data/sensor_crosswalk.json</code>. Make sure it exists and the page is served from the repo.</div>`,
@@ -420,20 +434,28 @@ const I18N={
     h1:"Aire Escolar Bogotá",
     subtitle:"Monitoreo de calidad del aire en colegios públicos de Bogotá",
     back:"← Panel",
-    intro:`Calidad del aire (PM2.5): <b style="color:var(--sage)">Aula 19 con filtro Sqair</b> vs <b style="color:var(--terracotta)">Aula sin filtro</b> (referencia). Mové los sliders para explorar cualquier ventana horaria.`,
+    intro:(f,r)=>`Calidad del aire (PM2.5): <b style="color:var(--sage)">${f}</b> vs <b style="color:var(--terracotta)">${r}</b> (referencia). Mové los sliders para explorar cualquier ventana horaria.`,
     dateFrom:"Desde (fecha)", dateTo:"Hasta (fecha)", refresh:"Actualizar", weekdays:"Solo días hábiles",
     timeFrom:"Desde (hora)", timeTo:"Hasta (hora)",
+    pair:"Comparación",
     chartTitle:(a,b)=>`PM2.5 <span style="text-transform:none">(µg/m³)</span> — ventana ${a}–${b} resaltada`,
-    sensor_filter:"Aula 19 (con filtro)",
-    sensor_ref:"Aula sin filtro",
+    // Etiquetas de sala: el modelo de purificador sale de device_history, nunca hardcodeado.
+    roomWithFilter:(room,dev)=>dev?`${room} (${dev})`:`${room} (con filtro)`,
+    roomNoFilter:room=>`${room} (sin filtro)`,
     th_sensor:"Sensor", th_avg:"Prom", th_median:"Mediana", th_min:"Mín", th_max:"Máx", th_n:"n",
     diff:"Diferencia (sin − con)",
     noDiff:"datos insuficientes en esta ventana",
     sigTitle:"Ventana seleccionada — paired t-test (filtro − referencia, pareado por timestamp)",
     significant:"Significativo (p<0.05)", notSignificant:"No significativo",
     pairs:"pares",
+    // Stats por período de dispositivo (device_history del aula con filtro)
+    perDeviceTitle:"Por dispositivo de filtro (ventana seleccionada)",
+    th_period:"Período", th_device:"Dispositivo", devActive:"activo", devTo:d=>`hasta ${d}`,
+    devNone:"sin filtro", mixedRow:"Rango completo (dispositivos mezclados)", mixedWarn:"⚠ abarca varios dispositivos",
+    cadr:c=>`CADR ${c} m³/h`,
     eff:["insignificante","pequeño","mediano","grande"],
     canonTitle:"Significancia por ventana canónica (precalculado)",
+    canonOtherPair:"Las ventanas precalculadas sólo están disponibles para el par original — corré collectors/purpleair_stats.py para éste.",
     th_window:"Ventana", th_npairs:"n pares", th_sig:"Resultado", th_avgdiff:"Diferencia prom.", sigShort:"p<0.05", nsShort:"ns",
     win_school:"Escolar (L–V 6:30–15:00)", win_extended:"Extendido (L–V 6:30–17:00)", win_all:"24 horas", win_outside:"Fuera (17:00–6:30)",
     statsErr:`archivo de stats no encontrado — corré <code>collectors/purpleair_stats.py</code> y hacé push`,
@@ -467,7 +489,7 @@ const I18N={
     chart_school:`Colegio — PM2.5 interior vs exterior <span style="text-transform:none">(µg/m³)</span>`,
     chart_aula:`Aula — PM2.5 <span style="text-transform:none">(µg/m³)</span>`,
     series_int:"Prom. interior", series_ext:"Prom. exterior",
-    withFilter:"con filtro Sqair", noFilter:"sin filtro",
+    withFilter:"con filtro", withDevice:d=>`con ${d}`, noFilter:"sin filtro",
     dataFrom:d=>`Datos disponibles desde ${d}`,
     exNoData:"ningún sensor coincide con los filtros",
     exErr:`<div class="err">No se pudo cargar <code>data/sensor_crosswalk.json</code>. Verificá que exista y que la página se sirva desde el repo.</div>`,
@@ -486,14 +508,53 @@ const I18N={
 let LANG = (localStorage.getItem("purpleair_lang")==="es") ? "es" : "en";   // default: English
 const T=()=>I18N[LANG];
 
-const AIRE_FILTER=308614, AIRE_REF=308572;   // sensores: con filtro (Aula 19) / sin filtro
-const AIRE_SENSORS=[
-  {id:AIRE_FILTER,key:"sensor_filter",cvar:"--sage"},        // con filtro — verde salvia
-  {id:AIRE_REF,key:"sensor_ref",cvar:"--terracotta"},        // sin filtro — terracota
-];
+// ---- Par de comparación (con filtro vs referencia) — data-driven desde sensor_crosswalk.json ----
+// Ya NO se hardcodea ningún sensor_id ni el modelo de filtro: un "par" son las dos filas
+// source:"purpleair" que comparten `comparison_pair` (roles pair_role: "filter"/"reference").
+// El modelo de purificador y sus fechas viven en `device_history` del aula con filtro.
+let _pairs=[], _pair=null;                    // catálogo de pares + par activo
+let AIRE_FILTER=null, AIRE_REF=null;          // sensor_id (purpleair_id) del par activo
+let AIRE_SENSORS=[];                           // [{id,cvar,label}] recomputado por par/idioma
 // Resuelve el color de marca del sensor al hex actual (respeta luz/oscuro).
 const sColor=s=>getComputedStyle(document.documentElement).getPropertyValue(s.cvar).trim();
-const sLabel=s=>T()[s.key];
+const sLabel=s=>s.label;
+
+// Fecha de pared en Bogotá (UTC-5, sin DST) como "YYYY-MM-DD" a partir de epoch ms.
+const bogDateStr=t=>{const b=new Date(t-5*3600000);return `${b.getUTCFullYear()}-${_pad(b.getUTCMonth()+1)}-${_pad(b.getUTCDate())}`;};
+// Dispositivo activo en una fecha dada (end_date exclusivo). start/end null = abierto por ese lado.
+function deviceAt(hist,ds){
+  for(const d of (hist||[])){
+    if(d.start_date&&ds<d.start_date)continue;
+    if(d.end_date&&ds>=d.end_date)continue;
+    return d;
+  }
+  return null;
+}
+// Dispositivo vigente hoy (período con end_date null); si no hay, el más reciente.
+function activeDevice(hist){
+  if(!hist||!hist.length)return null;
+  return hist.find(d=>d.end_date===null)||hist[hist.length-1];
+}
+// Agrupa las filas purpleair del crosswalk en pares {id,school,room,filter,ref}.
+function buildPairs(sensors){
+  const by={};
+  (sensors||[]).filter(s=>s.source==="purpleair"&&s.comparison_pair).forEach(s=>{
+    const p=by[s.comparison_pair]||(by[s.comparison_pair]={id:s.comparison_pair,school:s.school_name,filter:null,ref:null});
+    if(s.pair_role==="filter")p.filter=s; else if(s.pair_role==="reference")p.ref=s;
+  });
+  return Object.values(by).filter(p=>p.filter&&p.ref);
+}
+const _roomName=s=>s.classroom_name||s.classroom_token||"—";
+// Fija el par activo: recalcula ids, colores/labels de serie e i18n dependiente del par.
+function applyPair(){
+  if(!_pair)return;
+  AIRE_FILTER=_pair.filter.purpleair_id; AIRE_REF=_pair.ref.purpleair_id;
+  const dev=activeDevice(_pair.filter.device_history);
+  AIRE_SENSORS=[
+    {id:AIRE_FILTER,cvar:"--sage",     label:T().roomWithFilter(_roomName(_pair.filter),dev?dev.device_model:null)},
+    {id:AIRE_REF,   cvar:"--terracotta",label:T().roomNoFilter(_roomName(_pair.ref))},
+  ];
+}
 const AIRE_MAX_GAP_MS=60*60*1000;                 // corta la línea si hay un hueco > 1h (sin puentes falsos)
 const _pad=n=>String(n).padStart(2,"0");
 const hhmm=m=>`${_pad(Math.floor(m/60))}:${_pad(m%60)}`;
@@ -535,7 +596,7 @@ const fetchAir=date=>new Promise(res=>{
 
 // Un solo gráfico: serie completa tenue (alpha .2) + ventana [winFrom,winTo] opaca (alpha 1).
 // Cada punto lleva m=minutos del día. Corta segmentos en huecos > 1h y en los bordes de ventana.
-function aireChart(series,winFrom,winTo){
+function aireChart(series,winFrom,winTo,markers){
   const el=document.getElementById("aireChart");el.innerHTML="";
   // Geometría ampliada + tipografía UNIFORME y theme-aware: números Crimson Pro granate (--ink),
   // labels IBM Plex Sans gris (--label). Márgenes grandes; timestamps rotados 45° para no solaparse.
@@ -582,7 +643,14 @@ function aireChart(series,winFrom,winTo){
     });
     return `<path d="${d.trim()}" fill="none" stroke="${s.color}" stroke-width="1.9" stroke-opacity="1"/>`;}).join("");
 
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${ylabel}${faint}${strong}${xt}</svg>`;
+  // Marcas de cambio de dispositivo (device_history): línea vertical punteada + etiqueta del
+  // nuevo modelo. Cada marca ya trae su x en coordenadas de dibujo (respeta compresión weekday).
+  const mk=(markers||[]).filter(m=>m.x>=xmin&&m.x<=xmax).map(m=>{
+    const x0=X(m.x).toFixed(1);
+    return `<line x1="${x0}" y1="${PT}" x2="${x0}" y2="${H-PB}" stroke="${C_LBL}" stroke-width="1" stroke-dasharray="4 3" stroke-opacity="0.7"/>`+
+      `<text x="${(+x0+4).toFixed(1)}" y="${PT+14}" font-family="${F_SANS}" font-size="13" fill="${C_LBL}">${m.label}</text>`;
+  }).join("");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${ylabel}${faint}${strong}${mk}${xt}</svg>`;
 }
 
 // Tabla de stats para un subconjunto de filas (promedio/mediana/min/max/n + diferencia).
@@ -631,12 +699,8 @@ function _betai(a,b,x){
 }
 const tTwoSidedP=(t,df)=>df<=0?NaN:_betai(df/2,0.5,df/(df+t*t));
 
-// Paired t-test sobre filas ya filtradas a la ventana: parea por timestamp, d=filtro−referencia.
-function pairedStats(rows){
-  const byT={};
-  rows.forEach(r=>{(byT[r.t]||(byT[r.t]={}))[r.sid]=r.pm25;});
-  const d=[];
-  for(const k in byT){const o=byT[k];if(o[AIRE_FILTER]!==undefined&&o[AIRE_REF]!==undefined)d.push(o[AIRE_FILTER]-o[AIRE_REF]);}
+// Paired t-test sobre un vector de diferencias d=filtro−referencia ya pareadas.
+function _tStat(d){
   const n=d.length;
   if(n<2)return{n,ok:false};
   const mean=d.reduce((a,b)=>a+b,0)/n;
@@ -644,6 +708,37 @@ function pairedStats(rows){
   if(sd===0)return{n,ok:false};
   const df=n-1, t=mean/(sd/Math.sqrt(n));
   return {n,ok:true,t,p:tTwoSidedP(t,df),cohensd:mean/sd,mean,df};
+}
+// Parea filas por timestamp (d=filtro−referencia) y devuelve las diferencias + su fecha Bogotá.
+function _pairedDiffs(rows){
+  const byT={};
+  rows.forEach(r=>{(byT[r.t]||(byT[r.t]={}))[r.sid]=r.pm25;});
+  const out=[];
+  for(const k in byT){const o=byT[k];
+    if(o[AIRE_FILTER]!==undefined&&o[AIRE_REF]!==undefined)
+      out.push({d:o[AIRE_FILTER]-o[AIRE_REF], ds:bogDateStr(+k)});}
+  return out;
+}
+// Paired t-test sobre filas ya filtradas a la ventana.
+function pairedStats(rows){ return _tStat(_pairedDiffs(rows).map(x=>x.d)); }
+
+// Paired t-test PARTIDO por dispositivo de filtro: cada par se asigna al modelo que estaba
+// activo (device_history del aula con filtro) en la fecha de esa lectura. Así los dos tramos
+// (p.ej. Blueair vs Sqair en la misma aula) nunca se mezclan por defecto. Devuelve además la
+// fila "rango completo" (mezclada) marcada como tal cuando abarca más de un dispositivo.
+function pairedStatsByDevice(rows,hist){
+  const diffs=_pairedDiffs(rows);
+  const buckets={};
+  diffs.forEach(({d,ds})=>{
+    const dev=deviceAt(hist,ds);
+    const key=dev?dev.device_model:"__none__";
+    const b=buckets[key]||(buckets[key]={dev,arr:[],min:ds,max:ds});
+    b.arr.push(d); if(ds<b.min)b.min=ds; if(ds>b.max)b.max=ds;
+  });
+  const perDevice=Object.values(buckets)
+    .map(b=>({dev:b.dev,min:b.min,max:b.max,...(_tStat(b.arr)),count:b.arr.length}))
+    .sort((a,b)=>a.min<b.min?-1:a.min>b.min?1:0);
+  return {perDevice, all:_tStat(diffs.map(x=>x.d)), allCount:diffs.length, multiDevice:perDevice.length>1};
 }
 const ppval=p=>p==null?"—":(p<0.0001?"&lt;0.0001":p.toFixed(4));
 const effLabel=d=>{const a=Math.abs(d);return T().eff[a<0.2?0:a<0.5?1:a<0.8?2:3];};
@@ -654,6 +749,11 @@ function renderCanon(){
   const L=T(), el=document.getElementById("aireCanon");
   document.getElementById("secCanon").textContent=L.canonTitle;
   document.getElementById("aireMethod").textContent=L.methodNote;
+  // El JSON precalculado corresponde a UN par (su _meta). Si el par activo es otro, no aplica.
+  const meta=_stats&&_stats._meta;
+  if(_stats&&!(meta&&AIRE_FILTER!=null&&+meta.sensor_filter===AIRE_FILTER&&+meta.sensor_reference===AIRE_REF)){
+    el.innerHTML=`<tbody><tr><td style="color:var(--hint)">${L.canonOtherPair}</td></tr></tbody>`;return;
+  }
   if(!_stats){el.innerHTML=`<tbody><tr><td style="color:var(--hint)">${L.statsErr}</td></tr></tbody>`;return;}
   const order=[["school_hours",L.win_school],["extended_hours",L.win_extended],["all_hours",L.win_all],["outside_hours",L.win_outside]];
   const body=order.map(([k,lab])=>{
@@ -676,7 +776,8 @@ function applyStaticI18n(){
   document.getElementById("h1").textContent=L.h1;
   document.getElementById("subtitle").textContent=L.subtitle;
   document.getElementById("backLink").textContent=L.back;
-  document.getElementById("introText").innerHTML=L.intro;
+  document.getElementById("lblPair").textContent=L.pair;
+  applyPairI18n();   // intro + opciones/label del selector de par (dependen del par activo)
   document.getElementById("lblDateFrom").textContent=L.dateFrom;
   document.getElementById("lblDateTo").textContent=L.dateTo;
   document.getElementById("btnRefresh").textContent=L.refresh;
@@ -744,6 +845,33 @@ function onSlide(){ renderAire(); }
 // ---- datos en memoria + render ----
 let _rows=[], _dates=[], _stats=null;
 
+// Selector de par: opciones, label e intro derivan del par activo (nada hardcodeado).
+function applyPairI18n(){
+  const L=T(), sel=document.getElementById("airePair"), row=document.getElementById("airePairRow"), intro=document.getElementById("introText");
+  if(!_pair){ intro.textContent=L.loading; return; }
+  applyPair();   // recomputa labels de AIRE_SENSORS en el idioma actual
+  intro.innerHTML=L.intro(sLabel(AIRE_SENSORS[0]), sLabel(AIRE_SENSORS[1]));
+  sel.innerHTML=_pairs.map(p=>`<option value="${p.id}">${p.school} — ${_roomName(p.filter)} vs ${_roomName(p.ref)}</option>`).join("");
+  sel.value=_pair.id;
+  row.style.display=_pairs.length>1?"":"none";   // 1 solo par ⇒ oculto (Tab 1 sin cambios visibles)
+}
+
+// Carga el crosswalk una vez, arma los pares y fija el primero (Francisco Primero) por defecto.
+async function loadPairs(){
+  try{
+    const xw=await fetch(`${REPO}/data/sensor_crosswalk.json?t=`+Date.now()).then(r=>r.ok?r.json():Promise.reject());
+    _pairs=buildPairs(xw.sensors);
+  }catch(e){ _pairs=[]; }
+  if(_pairs.length){ _pair=_pairs[0]; applyPair(); }
+  applyPairI18n();
+}
+
+// Cambia el par activo (sin refetch: los CSV diarios ya contienen todos los sensores).
+function setPair(id){
+  const p=_pairs.find(x=>x.id===id); if(!p)return;
+  _pair=p; applyPair(); applyPairI18n(); renderAire();
+}
+
 async function loadAire(){
   const fromEl=document.getElementById("aireFrom"),toEl=document.getElementById("aireTo");
   const today=new Date();
@@ -771,11 +899,13 @@ function renderAire(){
   document.getElementById("aireStatus").textContent=T().status(rows.length,_dates.length);
 
   const errEl=document.getElementById("aireErr");errEl.innerHTML="";
+  const hist=_pair?_pair.filter.device_history:[];
   renderCanon();   // tabla canónica desde el JSON (independiente de los sliders)
   if(!_rows.length){
     errEl.innerHTML=T().errHtml;
     document.getElementById("aireStats").innerHTML="";document.getElementById("aireLeg").innerHTML="";
     document.getElementById("aireSig").innerHTML="";
+    renderPerDevice([],hist);
     aireChart([],winFrom,winTo);return;
   }
 
@@ -793,7 +923,13 @@ function renderAire(){
   const series=AIRE_SENSORS.map(s=>({color:sColor(s),
     points:rows.filter(r=>r.sid===s.id).sort((a,b)=>a.t-b.t)
       .map(r=>({x:cx?cx(r.t,r.tp.minutes):r.t, rt:r.t, y:r.pm25, m:r.tp.minutes}))}));
-  aireChart(series,winFrom,winTo);
+  // Marcas de cambio de dispositivo: cada device_history con start_date (transición hacia un
+  // modelo) se sitúa en la medianoche Bogotá de esa fecha, mapeada con el mismo cx que los puntos.
+  const markers=(hist||[]).filter(d=>d.start_date).map(d=>{
+    const ms=new Date(d.start_date+"T00:00:00-05:00").getTime();
+    return {x:cx?cx(ms,0):ms, label:d.device_model};
+  });
+  aireChart(series,winFrom,winTo,markers);
   document.getElementById("aireLeg").innerHTML=AIRE_SENSORS.map(s=>`<span class="dot" style="background:${sColor(s)}"></span>${sLabel(s)}`).join("");
 
   // Stats sólo de la ventana seleccionada.
@@ -809,6 +945,39 @@ function renderAire(){
     sigEl.innerHTML=`<span class="section-title">${T().sigTitle}</span>`+
       `<div>t = <b>${st.t.toFixed(2)}</b> · p = <b>${ppval(st.p)}</b> · Cohen's d = <b>${st.cohensd.toFixed(2)}</b> (${effLabel(st.cohensd)}) · n = ${st.n} ${T().pairs} → ${sigBadge(st.p)}</div>`;
   }
+
+  // Desglose por dispositivo de filtro (aparece cuando el aula tuvo >1 modelo).
+  renderPerDevice(winRows,hist);
+}
+
+// Tabla de significancia PARTIDA por dispositivo de filtro. Se muestra sólo cuando el aula con
+// filtro registró más de un modelo en device_history (o la ventana abarca varios), para poder
+// comparar los tramos (p.ej. Blueair vs Sqair en la misma aula) sin mezclarlos.
+function renderPerDevice(winRows,hist){
+  const L=T(),sec=document.getElementById("secPerDevice"),tbl=document.getElementById("airePerDevice");
+  const st=pairedStatsByDevice(winRows,hist);
+  const show=((hist||[]).length>1)||st.multiDevice;
+  if(!show){sec.style.display="none";tbl.style.display="none";return;}
+  sec.style.display="";tbl.style.display="";
+  sec.textContent=L.perDeviceTitle;
+  const sig=`<span style="color:var(--green-mid);font-weight:600;">${L.sigShort}</span>`, ns=`<span style="color:var(--muted)">${L.nsShort}</span>`;
+  const devCell=d=>d?`${d.device_model}${d.cadr_m3h?` · ${L.cadr(d.cadr_m3h)}`:''}`:L.devNone;
+  const perCell=r=>r.dev?`${r.dev.start_date||"—"} → ${r.dev.end_date||L.devActive}`:`${r.min} → ${r.max}`;
+  const row=r=>{
+    if(!r.ok)return `<tr><td>${perCell(r)}</td><td>${devCell(r.dev)}</td><td class="num" colspan="4" style="color:var(--hint)">${L.noDiff} (n=${r.count})</td></tr>`;
+    // AVG DIFFERENCE = sin filtro − con filtro = −mean (mean es filtro − referencia).
+    return `<tr><td>${perCell(r)}</td><td>${devCell(r.dev)}</td><td class="num">${r.n}</td>`+
+      `<td class="num">${(-r.mean).toFixed(2)}</td><td class="num">${r.t.toFixed(2)}</td><td class="num">${ppval(r.p)}</td>`+
+      `<td>${r.p<0.05?sig:ns}</td></tr>`;
+  };
+  let body=st.perDevice.map(row).join("");
+  if(st.multiDevice&&st.all.ok){
+    body+=`<tr><td><b>${L.mixedRow}</b> <span style="color:var(--terracotta);font-style:italic">${L.mixedWarn}</span></td><td>—</td>`+
+      `<td class="num">${st.all.n}</td><td class="num">${(-st.all.mean).toFixed(2)}</td><td class="num">${st.all.t.toFixed(2)}</td>`+
+      `<td class="num">${ppval(st.all.p)}</td><td>${st.all.p<0.05?sig:ns}</td></tr>`;
+  }
+  tbl.innerHTML=`<thead><tr><th>${L.th_period}</th><th>${L.th_device}</th><th class="num">${L.th_npairs}</th>`+
+    `<th class="num">${L.th_avgdiff}</th><th class="num">t</th><th class="num">p</th><th>${L.th_sig}</th></tr></thead><tbody>${body}</tbody>`;
 }
 
 // Carga purpleair_stats.json (ventanas canónicas precalculadas) desde GitHub.
@@ -955,8 +1124,9 @@ function exSchools(){
     const g=by[s.school_uid]||(by[s.school_uid]={uid:s.school_uid,name:s.school_name,localidad:s.localidad,
       arm:s.treatment,armKey:exArmKey(s.treatment),lat:[],lon:[],sensors:[],sources:new Set()});
     const hasFilter=s.source==='purpleair'?!!s.has_active_filter:(s.installed_filter===1||s.T_Both===1);
+    const dev=s.source==='purpleair'?activeDevice(s.device_history):null;
     g.sensors.push({key,name:s.sensor_name,source:s.source,classroom:s.classroom_name||s.classroom_token||"—",
-      exterior:!!s.exterior,hasFilter,online,pm:online?exMean(ser.map(p=>p.pm25)):null,
+      exterior:!!s.exterior,hasFilter,deviceModel:dev?dev.device_model:null,online,pm:online?exMean(ser.map(p=>p.pm25)):null,
       count:ser.length,lastTs:online?ser[ser.length-1].t:null});
     g.sources.add(s.source);
     if(s.lat){g.lat.push(s.lat);g.lon.push(s.lon);}
@@ -1035,7 +1205,8 @@ function exRenderKpis(schools){
   if(_ex.level==='aula'&&_ex.sensor){
     const f=exFindSensor(_ex.sensor); if(!f){el.innerHTML="";return;}
     const x=f.sensor, st=exStats([x.key]);
-    const typ=(x.exterior?L.exterior:L.interior)+(x.source==='purpleair'?` · ${x.hasFilter?L.withFilter:L.noFilter}`:'');
+    const filterTxt=x.hasFilter?(x.deviceModel?L.withDevice(x.deviceModel):L.withFilter):L.noFilter;
+    const typ=(x.exterior?L.exterior:L.interior)+(x.source==='purpleair'?` · ${filterTxt}`:'');
     el.innerHTML=
       card(L.kpi_aula_pm, st.mean==null?"—":kv(st.mean), st.mean==null?L.tip_nodata:`µg/m³ · ${L.kpiBase(st.count,Math.round(st.hours))}`,
         st.mean==null?'var(--muted)':pmColor(st.mean), st.mean==null?L.tip_nodata:L.kpiTip(Math.round(st.hours),up(st.uptime)))+
@@ -1298,7 +1469,7 @@ function exResetFilters(){
 applyStaticI18n();
 applyTheme(currentTheme());   // sincroniza el ícono del toggle con el tema ya aplicado en <head>
 loadStatsJson();
-loadAire();
+loadPairs().then(loadAire);     // arma los pares del crosswalk y luego descarga los CSV
 setInterval(loadAire,60000);   // refresca cada minuto
 </script>
 </body>

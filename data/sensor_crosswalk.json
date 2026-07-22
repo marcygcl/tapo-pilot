@@ -7716,7 +7716,18 @@
       "address": "KR 28 63 64",
       "purpleair_id": 308614,
       "label": "Aula 19 (con filtro Sqair)",
-      "has_active_filter": true
+      "has_active_filter": true,
+      "comparison_pair": "111001024830_s19_vs_s20",
+      "pair_role": "filter",
+      "device_history": [
+        {
+          "device_model": "Smart Air Sqair",
+          "cadr_m3h": 300,
+          "start_date": null,
+          "end_date": null,
+          "note": "Filtro original del piloto; fecha de instalacion exacta no registrada."
+        }
+      ]
     },
     {
       "source": "purpleair",
@@ -7742,7 +7753,10 @@
       "address": "KR 28 63 64",
       "purpleair_id": 308572,
       "label": "Aula sin filtro (referencia)",
-      "has_active_filter": false
+      "has_active_filter": false,
+      "comparison_pair": "111001024830_s19_vs_s20",
+      "pair_role": "reference",
+      "device_history": []
     }
   ]
 }
