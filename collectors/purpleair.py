@@ -8,9 +8,12 @@ Al arrancar también descarga el HISTÓRICO de ambos sensores (backfill) para
 rellenar los CSVs retroactivamente: desde el último timestamp guardado, o los
 últimos 7 días si no hay datos locales.
 
-Sensores monitoreados:
-    308614 -> Aula 19 (con filtro Sqair)
+Sensores monitoreados (ver dict SENSORS / _SENSOR_REGISTRY más abajo):
+    308614 -> Aula 19 (con filtro)          # Par 1 — Francisco Primero
     308572 -> Aula sin filtro (referencia)
+    Par 2 (colegio nuevo): registrado con placeholders None hasta tener los
+    purpleair_id reales; mientras tanto no se pollea. El modelo de filtro no se
+    fija acá, vive en device_history del crosswalk.
 
 Campos del CSV:
     timestamp, sensor_id, sensor_name, pm25, temperature, humidity
@@ -77,11 +80,30 @@ HISTORY_AVERAGE = 10        # minutos; el mínimo del histórico (no hay 5 min)
 HISTORY_BACKFILL_DAYS = 7   # rango por defecto si no hay datos locales
 HISTORY_CHUNK_DAYS = 2      # ventana por request (límite de 3d para average=10)
 
-# Sensores a pollear: sensor_index -> etiqueta de referencia.
-SENSORS = {
-    308614: "Aula 19 (con filtro)",
-    308572: "Aula sin filtro",
-}
+# Sensores a pollear, agrupados por par de comparación (aula con filtro vs aula
+# de referencia). Cada entrada es (purpleair_id, etiqueta). El collector pollea y
+# backfillea SÓLO las entradas con un purpleair_id entero; los placeholders con
+# id None se ignoran (no se pollean, no generan llamadas a la API ni errores).
+#
+# >>> CÓMO ACTIVAR EL SEGUNDO PAR <<<
+# Cuando tengas los purpleair_id reales del colegio nuevo, reemplazá cada `None`
+# de abajo por el entero correspondiente. Con eso alcanza: el collector empieza a
+# pollearlo y a backfillear su histórico en el próximo arranque. No hay que tocar
+# nada más en este archivo. (Los mismos dos ids van también en las filas
+# source:"purpleair" de data/sensor_crosswalk.json — ver scripts/add_comparison_pair.py.)
+# El MODELO de filtro (Blueair → Sqair) NO se registra acá: vive en el
+# device_history del crosswalk, así la etiqueta no queda vieja tras el reemplazo.
+_SENSOR_REGISTRY = [
+    # --- Par 1: Francisco Primero (activo) ---
+    (308614, "Aula 19 (con filtro)"),
+    (308572, "Aula sin filtro"),
+    # --- Par 2: colegio nuevo (PENDIENTE de ids — reemplazar los None) ---
+    (None, "Aula con filtro — colegio nuevo"),          # <- purpleair_id del aula CON filtro
+    (None, "Aula sin filtro (referencia) — colegio nuevo"),  # <- purpleair_id del aula de referencia
+]
+
+# sensor_index -> etiqueta. Sólo entran los ids ya asignados (enteros).
+SENSORS = {sid: label for sid, label in _SENSOR_REGISTRY if isinstance(sid, int)}
 
 CSV_FIELDS = ["timestamp", "sensor_id", "sensor_name", "pm25", "temperature", "humidity"]
 

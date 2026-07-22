@@ -27,9 +27,9 @@ se edita el device_history del aula con filtro a mano (cerrar el Blueair con
 end_date y agregar el Sqair con start_date), o con --close-device/--add-device.
 Ver docs/comparison_pairs.md.
 
-Después de agregar el par hay que registrar los dos purpleair_id en el dict
-SENSORS de collectors/purpleair.py para que empiece a pollear/backfillear sus CSV
-(los collectors están fuera del alcance de este script, se tocan por separado).
+Después de agregar el par, activá el polling: en collectors/purpleair.py el
+segundo par ya está en _SENSOR_REGISTRY con placeholders None; reemplazá esos
+None por los mismos dos purpleair_id para que empiece a pollear/backfillear.
 """
 
 import argparse
@@ -149,8 +149,8 @@ def main():
     # Escribe sin newline final, como el archivo original.
     XW_PATH.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Par '{pair_id}': filtro {r1} ({args.filter_id}), referencia {r2} ({args.ref_id}).")
-    print("Recordá: registrar ambos purpleair_id en SENSORS de collectors/purpleair.py "
-          "para que se generen los CSV.")
+    print(f"Ahora activá el polling: en collectors/purpleair.py, reemplazá los dos None de "
+          f"_SENSOR_REGISTRY por {args.filter_id} (con filtro) y {args.ref_id} (referencia).")
 
 
 if __name__ == "__main__":

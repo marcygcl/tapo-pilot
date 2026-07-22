@@ -84,9 +84,12 @@ uv run python scripts/add_comparison_pair.py \
 
 Después:
 
-1. **Registrar** los dos `purpleair_id` en el dict `SENSORS` de
-   `collectors/purpleair.py` para que empiece a pollear/backfillear sus CSV
-   (los collectors se tocan por separado; no es parte de este script).
+1. **Activar el polling**: en `collectors/purpleair.py`, el segundo par ya está
+   registrado en `_SENSOR_REGISTRY` con dos placeholders `None`. Reemplazá cada
+   `None` por el `purpleair_id` real (entero) — con eso el collector empieza a
+   pollear/backfillear sus CSV en el próximo arranque. Mientras sean `None` no se
+   pollean (no generan llamadas a la API). Son los mismos dos ids que van en el
+   crosswalk, así que usá los que pasaste a `add_comparison_pair.py`.
 2. **Reemplazo de dispositivo** (Blueair → Sqair en la misma aula): editar el
    `device_history` del aula con filtro — poner `end_date` al Blueair y agregar el
    Sqair con `start_date` = misma fecha y `end_date: null`. No se crea un par nuevo.
