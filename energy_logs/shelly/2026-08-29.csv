@@ -383,3 +383,4 @@ timestamp,alias,aula,colegio,is_on,watts,today_wh,school_hours
 2026-08-29T15:55:58-05:00,shelly_0,Salón con filtro 1,COLEGIO SAN CRISTOBAL SUR (IED),1,0.0,267.0,0
 2026-08-29T16:01:05-05:00,shelly_0,Salón con filtro 1,COLEGIO SAN CRISTOBAL SUR (IED),1,0.0,267.0,0
 2026-08-29T16:05:55-05:00,shelly_0,Salón con filtro 1,COLEGIO SAN CRISTOBAL SUR (IED),1,6.2,267.2,0
+2026-08-29T16:10:58-05:00,shelly_0,Salón con filtro 1,COLEGIO SAN CRISTOBAL SUR (IED),1,6.3,267.7,0
